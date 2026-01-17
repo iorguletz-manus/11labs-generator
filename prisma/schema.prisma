@@ -1,0 +1,46 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id            String   @id @default(cuid())
+  name          String
+  voiceId       String?
+  voiceSettings String?  // JSON stored as string: {stability, similarity, style, speed, model}
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  chunks        Chunk[]
+}
+
+model Chunk {
+  id        String         @id @default(cuid())
+  projectId String
+  project   Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  text      String
+  order     Int
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  variants  AudioVariant[]
+}
+
+model AudioVariant {
+  id            String   @id @default(cuid())
+  chunkId       String
+  chunk         Chunk    @relation(fields: [chunkId], references: [id], onDelete: Cascade)
+  variantNumber Int
+  audioUrl      String?  // Path to stored audio file
+  audioData     Bytes?   // Alternative: store audio as blob
+  isActive      Boolean  @default(false)
+  status        String   @default("queued") // queued, processing, done, error
+  progress      Int      @default(0) // 0-100
+  errorMessage  String?
+  createdAt     DateTime @default(now())
+}
