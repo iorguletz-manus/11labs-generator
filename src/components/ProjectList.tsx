@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { useRouter } from "next/navigation";
 import ConfirmDialog from "./ConfirmDialog";
 
@@ -10,7 +10,11 @@ interface Project {
   createdAt: string;
 }
 
-export default function ProjectList() {
+export interface ProjectListRef {
+  refresh: () => void;
+}
+
+const ProjectList = forwardRef<ProjectListRef>(function ProjectList(_, ref) {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,23 +55,10 @@ export default function ProjectList() {
     fetchProjects();
   }, []);
 
-  // Creare proiect nou
-  const handleCreateProject = async () => {
-    try {
-      const response = await fetch("/api/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "Proiect nou" }),
-      });
-
-      if (!response.ok) throw new Error("Eroare la crearea proiectului");
-
-      const newProject = await response.json();
-      router.push(`/projects/${newProject.id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Eroare la creare");
-    }
-  };
+  // Expune metoda refresh pentru componenta părinte
+  useImperativeHandle(ref, () => ({
+    refresh: fetchProjects,
+  }));
 
   // Începe editarea inline
   const startEditing = (project: Project, e: React.MouseEvent) => {
@@ -181,15 +172,9 @@ export default function ProjectList() {
   if (projects.length === 0) {
     return (
       <div className="text-center py-12 bg-card rounded-lg border border-border">
-        <p className="text-secondary mb-4">
+        <p className="text-secondary">
           Nu ai niciun proiect. Creează primul tău proiect pentru a începe.
         </p>
-        <button
-          onClick={handleCreateProject}
-          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors"
-        >
-          + Creează Proiect
-        </button>
       </div>
     );
   }
@@ -300,4 +285,6 @@ export default function ProjectList() {
       />
     </>
   );
-}
+});
+
+export default ProjectList;

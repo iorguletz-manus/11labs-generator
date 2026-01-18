@@ -1,26 +1,16 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useState, useRef } from "react";
 import ProjectList from "@/components/ProjectList";
+import CreateProjectModal from "@/components/CreateProjectModal";
 
 export default function ProjectsPage() {
-  const router = useRouter();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const projectListRef = useRef<{ refresh: () => void }>(null);
 
-  const handleCreateProject = async () => {
-    try {
-      const response = await fetch("/api/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "Proiect nou" }),
-      });
-
-      if (!response.ok) throw new Error("Eroare la crearea proiectului");
-
-      const newProject = await response.json();
-      router.push(`/projects/${newProject.id}`);
-    } catch (err) {
-      console.error("Error creating project:", err);
-    }
+  const handleProjectCreated = () => {
+    // Reîncarcă lista de proiecte
+    projectListRef.current?.refresh();
   };
 
   return (
@@ -29,7 +19,7 @@ export default function ProjectsPage() {
       <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6">
         <h1 className="text-xl font-bold text-primary">11Labs Audiobook Generator</h1>
         <button
-          onClick={handleCreateProject}
+          onClick={() => setIsModalOpen(true)}
           className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors"
         >
           + Proiect Nou
@@ -40,9 +30,16 @@ export default function ProjectsPage() {
       <main className="flex-1 p-6">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-2xl font-semibold mb-6">Proiectele Mele</h2>
-          <ProjectList />
+          <ProjectList ref={projectListRef} />
         </div>
       </main>
+
+      {/* Modal creare proiect */}
+      <CreateProjectModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onCreated={handleProjectCreated}
+      />
     </div>
   );
 }
