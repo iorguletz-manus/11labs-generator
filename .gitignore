@@ -45,3 +45,4 @@ next-env.d.ts
 # database
 *.db
 *.db-journal
+dev.db

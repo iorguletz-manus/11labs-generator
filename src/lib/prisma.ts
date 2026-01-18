@@ -7,8 +7,8 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient(): PrismaClient {
-  // În producție (Vercel), folosim Turso
-  if (process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN) {
+  // În producție (Vercel), folosim Turso - verificăm NODE_ENV
+  if (process.env.NODE_ENV === "production" && process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN) {
     const libsql = createClient({
       url: process.env.TURSO_DATABASE_URL,
       authToken: process.env.TURSO_AUTH_TOKEN,
