@@ -1,6 +1,6 @@
 # 11Labs Audiobook Generator - Progres și Decizii
 
-**Ultima actualizare:** 18 Ianuarie 2026
+**Ultima actualizare:** 20 Ianuarie 2026
 
 ---
 
@@ -11,7 +11,7 @@
 | 1 | Setup și Fundație | ✅ Completă | 18 Ian 2026 |
 | 2 | Proiecte CRUD | ✅ Completă | 18 Ian 2026 |
 | 3 | Editor Text și Chunk-uri | ✅ Completă | 18 Ian 2026 |
-| 4 | Setări Voce | ⏳ În așteptare | - |
+| 4 | Setări Voce | ✅ Completă | 20 Ian 2026 |
 | 5 | Generare Audio (ElevenLabs) | ⏳ În așteptare | - |
 | 6 | Audio Queue și Player | ⏳ În așteptare | - |
 | 7 | Export și Concatenare | ⏳ În așteptare | - |
@@ -74,6 +74,9 @@ Environment variables setate în Vercel Dashboard:
 /api/projects        → GET (lista), POST (creare)
 /api/projects/[id]   → GET, PUT (redenumire), DELETE
 /api/projects/[id]/text → GET (chunk-uri), PUT (salvare text)
+/api/projects/[id]/voice → GET, PUT (setări voce)
+/api/voices          → GET (lista voci ElevenLabs)
+/api/models          → GET (lista modele ElevenLabs)
 ```
 
 ---
@@ -92,6 +95,13 @@ Environment variables setate în Vercel Dashboard:
 - `ProjectEditor.tsx` - Wrapper pentru pagina editor cu 3 coloane
 - API `/api/projects/[id]/text` - Endpoint pentru salvare și sincronizare chunk-uri
 
+### Faza 4
+
+- `VoiceSettings.tsx` - Panou setări voce cu dropdown și slidere
+- API `/api/voices` - Proxy pentru ElevenLabs voices API
+- API `/api/models` - Proxy pentru ElevenLabs models API
+- API `/api/projects/[id]/voice` - Endpoint pentru salvare setări voce
+
 ---
 
 ## Funcționalități Faza 3
@@ -103,10 +113,10 @@ Environment variables setate în Vercel Dashboard:
 | Editare text | ✅ | Textarea pentru fiecare chunk |
 | Creare chunk (Enter) | ✅ | Apăsarea Enter creează un chunk nou |
 | Unire chunk (Backspace) | ✅ | Backspace la început unește cu chunk-ul anterior |
+| Unire chunk (Delete) | ✅ | Delete la final unește cu chunk-ul următor |
 | Autosave | ✅ | Salvare automată la 2 secunde de inactivitate |
 | Salvare manuală | ✅ | Ctrl+S / Cmd+S pentru salvare imediată |
 | Indicator salvare | ✅ | "Salvat ✓", "Nesalvat", "Se salvează..." |
-| Statistici | ✅ | Număr chunk-uri și caractere în footer |
 | Validare lungime | ✅ | Avertisment pentru chunk-uri > 5000 caractere |
 | Selectare chunk | ✅ | Click pe chunk afișează opțiuni audio în panoul drept |
 | Paste multi-linie | ✅ | Text paste-uit cu Enter-uri creează chunk-uri multiple |
@@ -121,6 +131,32 @@ Environment variables setate în Vercel Dashboard:
 
 ---
 
+## Funcționalități Faza 4
+
+### Setări Voce
+
+| Funcționalitate | Status | Descriere |
+|-----------------|--------|-----------|
+| Dropdown voce | ✅ | Lista vocilor din contul ElevenLabs |
+| Dropdown model | ✅ | Lista modelelor TTS (eleven_multilingual_v2, etc.) |
+| Slider Stability | ✅ | 0-100%, default 50% |
+| Slider Similarity Boost | ✅ | 0-100%, default 75% |
+| Slider Style | ✅ | 0-100%, default 0% |
+| Slider Speed | ✅ | 0.5x-2.0x, default 1.0x |
+| Salvare automată | ✅ | Setările se salvează imediat la schimbare |
+| Persistență | ✅ | Setările sunt salvate per proiect în DB |
+
+### API-uri Noi
+
+| Endpoint | Metodă | Descriere |
+|----------|--------|-----------|
+| `/api/voices` | GET | Proxy pentru ElevenLabs voices API |
+| `/api/models` | GET | Proxy pentru ElevenLabs models API |
+| `/api/projects/[id]/voice` | GET | Obține setările vocii pentru proiect |
+| `/api/projects/[id]/voice` | PUT | Salvează setările vocii pentru proiect |
+
+---
+
 ## Modificări față de Specificații v1.0
 
 1. **Pagina principală:** `/` redirect la `/projects` (nu dropdown în header)
@@ -128,6 +164,7 @@ Environment variables setate în Vercel Dashboard:
 3. **Header editor:** Buton "← Înapoi" + nume proiect (nu dropdown)
 4. **Creare proiect:** Modal cu input nume (nu creare directă cu nume default)
 5. **Editor:** Textarea per chunk (nu contentEditable) - mai robust și mai simplu
+6. **Footer statistici:** Eliminat (nu era necesar)
 
 ---
 
@@ -139,15 +176,17 @@ Environment variables setate în Vercel Dashboard:
 | Warning Prisma build scripts | Nu afectează funcționalitatea, ignorat |
 | Baza de date Turso goală | Creat script `scripts/setup-turso.py` pentru inițializare |
 | Chunk-uri goale nu se salvau | Modificat API să păstreze chunk-uri goale |
+| Coloana `order` lipsă în Turso | Recreat tabelele cu structura corectă |
 
 ---
 
-## Pași Următori (Faza 4)
+## Pași Următori (Faza 5)
 
-1. Implementare selector voce în panoul stâng
-2. Integrare cu ElevenLabs API pentru lista de voci
-3. Setări voce per proiect (voce, stabilitate, claritate)
-4. Salvare setări voce în baza de date
+1. Integrare ElevenLabs TTS API pentru generare audio
+2. Generare și stocare audio pentru chunk-uri
+3. Border pulsează în timpul generării
+4. Border devine verde la finalizare
+5. Playback în browser
 
 ---
 

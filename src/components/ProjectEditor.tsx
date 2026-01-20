@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import TextEditor, { ChunkData } from "./TextEditor";
+import VoiceSettings from "./VoiceSettings";
 
 interface ProjectEditorProps {
   projectId: string;
@@ -70,11 +71,8 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
   return (
     <div className="flex-1 flex overflow-hidden">
       {/* Coloana 1 - Voice Settings (300px) */}
-      <div className="w-[300px] min-w-[300px] h-full bg-card border-r border-border p-4 overflow-y-auto">
-        <h2 className="text-lg font-semibold mb-4">Setări Voce</h2>
-        <p className="text-sm text-secondary">
-          Setările vocii vor fi implementate în Faza 4.
-        </p>
+      <div className="w-[300px] min-w-[300px] h-full bg-card border-r border-border overflow-y-auto">
+        <VoiceSettings projectId={projectId} />
       </div>
 
       {/* Coloana 2 - Text Editor (flexibil) */}
