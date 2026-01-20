@@ -36,9 +36,7 @@ export default function TextEditor({
   const [lastSavedText, setLastSavedText] = useState<string>("");
   const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Calculează statistici
-  const totalChunks = chunks.length || 1;
-  const totalCharacters = chunks.reduce((sum, chunk) => sum + chunk.text.length, 0);
+  // Calculează chunk-uri peste limită
   const chunksOverLimit = chunks.filter((chunk) => chunk.text.length > MAX_CHUNK_LENGTH);
 
   // Inițializează textul din chunk-uri
@@ -112,7 +110,7 @@ export default function TextEditor({
     triggerAutosave(newChunks);
   }, [chunks, triggerAutosave]);
 
-  // Handler pentru Enter - creează chunk nou
+  // Handler pentru Enter, Backspace și Delete
   const handleKeyDown = useCallback((e: React.KeyboardEvent, index: number) => {
     const textarea = e.target as HTMLTextAreaElement;
     
@@ -190,6 +188,40 @@ export default function TextEditor({
         if (prevTextarea) {
           prevTextarea.focus();
           prevTextarea.setSelectionRange(cursorPosition, cursorPosition);
+        }
+      }, 0);
+    }
+
+    // Delete la finalul chunk-ului - unește cu chunk-ul următor
+    if (e.key === "Delete" && textarea.selectionStart === textarea.selectionEnd && textarea.selectionStart === chunks[index].text.length && index < chunks.length - 1) {
+      e.preventDefault();
+      
+      const currentChunk = chunks[index];
+      const nextChunk = chunks[index + 1];
+      const cursorPosition = currentChunk.text.length;
+      
+      const newChunks = [...chunks];
+      newChunks[index] = {
+        ...currentChunk,
+        text: currentChunk.text + nextChunk.text,
+        hasAudio: false, // Invalidăm audio-ul când unim
+      };
+      newChunks.splice(index + 1, 1);
+      
+      // Reordonăm
+      newChunks.forEach((chunk, i) => {
+        chunk.order = i;
+      });
+      
+      setChunks(newChunks);
+      triggerAutosave(newChunks);
+      
+      // Păstrăm focus pe chunk-ul curent la poziția de unire
+      setTimeout(() => {
+        const currentTextarea = document.querySelector(`[data-chunk-index="${index}"]`) as HTMLTextAreaElement;
+        if (currentTextarea) {
+          currentTextarea.focus();
+          currentTextarea.setSelectionRange(cursorPosition, cursorPosition);
         }
       }, 0);
     }
@@ -329,12 +361,9 @@ export default function TextEditor({
         ))}
       </div>
 
-      {/* Footer cu statistici */}
+      {/* Footer cu butonul Generează Toate */}
       <div className="px-4 py-3 border-t border-border bg-card">
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-secondary">
-            {totalChunks} chunk-{totalChunks === 1 ? "" : "uri"} • {totalCharacters.toLocaleString()} caractere
-          </div>
+        <div className="flex items-center justify-end">
           <button
             onClick={handleGenerateAll}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm font-medium"
