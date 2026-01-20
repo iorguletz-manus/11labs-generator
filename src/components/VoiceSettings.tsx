@@ -27,6 +27,7 @@ interface VoiceSettingsData {
   style: number;
   speed: number;
   model: string;
+  speakerBoost: boolean;
 }
 
 interface VoiceSettingsProps {
@@ -43,6 +44,7 @@ export default function VoiceSettings({ projectId }: VoiceSettingsProps) {
     style: 0,
     speed: 1.0,
     model: "eleven_multilingual_v2",
+    speakerBoost: true,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -81,7 +83,14 @@ export default function VoiceSettings({ projectId }: VoiceSettingsProps) {
             setSelectedVoiceId(projectVoiceData.voiceId);
           }
           if (projectVoiceData.settings) {
-            setSettings(projectVoiceData.settings);
+            setSettings({
+              stability: projectVoiceData.settings.stability ?? 50,
+              similarity: projectVoiceData.settings.similarity ?? 75,
+              style: projectVoiceData.settings.style ?? 0,
+              speed: projectVoiceData.settings.speed ?? 1.0,
+              model: projectVoiceData.settings.model ?? "eleven_multilingual_v2",
+              speakerBoost: projectVoiceData.settings.speakerBoost ?? true,
+            });
           }
         }
       } catch (err) {
@@ -131,6 +140,7 @@ export default function VoiceSettings({ projectId }: VoiceSettingsProps) {
         stability: Math.round((selectedVoice.settings.stability || 0.5) * 100),
         similarity: Math.round((selectedVoice.settings.similarity_boost || 0.75) * 100),
         style: Math.round((selectedVoice.settings.style || 0) * 100),
+        speakerBoost: selectedVoice.settings.use_speaker_boost ?? true,
       };
       setSettings(newSettings);
       saveSettings(voiceId, newSettings);
@@ -140,7 +150,7 @@ export default function VoiceSettings({ projectId }: VoiceSettingsProps) {
   };
 
   // Handler pentru schimbarea setărilor
-  const handleSettingChange = (key: keyof VoiceSettingsData, value: number | string) => {
+  const handleSettingChange = (key: keyof VoiceSettingsData, value: number | string | boolean) => {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
     saveSettings(selectedVoiceId, newSettings);
@@ -307,6 +317,35 @@ export default function VoiceSettings({ projectId }: VoiceSettingsProps) {
         <p className="text-xs text-gray-500">
           0.5x = lent, 1.0x = normal, 2.0x = rapid
         </p>
+      </div>
+
+      {/* Speaker Boost Toggle */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Speaker Boost
+            </label>
+            <p className="text-xs text-gray-500">
+              Îmbunătățește similaritatea cu vocea originală
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleSettingChange("speakerBoost", !settings.speakerBoost)}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+              settings.speakerBoost ? "bg-blue-600" : "bg-gray-200"
+            }`}
+            role="switch"
+            aria-checked={settings.speakerBoost}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                settings.speakerBoost ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
+        </div>
       </div>
 
       {/* Info despre vocea selectată */}
