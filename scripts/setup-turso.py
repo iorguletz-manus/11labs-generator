@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
-Script pentru a crea tabelele în baza de date Turso.
-Rulează acest script o singură dată pentru a inițializa baza de date în cloud.
+Script pentru a crea/actualiza tabelele în baza de date Turso.
+Rulează acest script pentru a aplica migrările în producție.
+
+Versiune: 2.0 - Actualizat pentru v4 (sistem de setări dual)
 """
 
 import os
@@ -23,8 +25,8 @@ conn = libsql.connect(
     auth_token=TURSO_AUTH_TOKEN
 )
 
-# SQL statements pentru crearea tabelelor (bazat pe schema Prisma)
-statements = [
+# SQL statements pentru crearea tabelelor (bazat pe schema Prisma v4)
+create_statements = [
     # Tabel Project
     """CREATE TABLE IF NOT EXISTS Project (
         id TEXT PRIMARY KEY NOT NULL,
@@ -35,40 +37,75 @@ statements = [
         updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     )""",
     
-    # Tabel Chunk
+    # Tabel Chunk (cu câmpuri noi v4)
     """CREATE TABLE IF NOT EXISTS Chunk (
         id TEXT PRIMARY KEY NOT NULL,
         projectId TEXT NOT NULL,
-        orderIndex INTEGER NOT NULL,
         text TEXT NOT NULL,
+        "order" INTEGER NOT NULL,
+        useCustomSettings INTEGER NOT NULL DEFAULT 0,
+        customVoiceId TEXT,
+        customVoiceSettings TEXT,
         createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (projectId) REFERENCES Project(id) ON DELETE CASCADE ON UPDATE CASCADE
     )""",
     
-    # Tabel AudioVariant
+    # Tabel AudioVariant (cu câmpuri noi v4)
     """CREATE TABLE IF NOT EXISTS AudioVariant (
         id TEXT PRIMARY KEY NOT NULL,
         chunkId TEXT NOT NULL,
-        audioUrl TEXT NOT NULL,
-        isSelected INTEGER NOT NULL DEFAULT 0,
+        variantNumber INTEGER NOT NULL,
+        audioUrl TEXT,
+        audioData BLOB,
+        isActive INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'queued',
+        progress INTEGER NOT NULL DEFAULT 0,
+        errorMessage TEXT,
+        usedVoiceId TEXT,
+        usedVoiceSettings TEXT,
         createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (chunkId) REFERENCES Chunk(id) ON DELETE CASCADE ON UPDATE CASCADE
     )""",
     
     # Indexuri
-    "CREATE INDEX IF NOT EXISTS Chunk_projectId_idx ON Chunk(projectId)",
+    "CREATE INDEX IF NOT EXISTS Chunk_projectId_order_idx ON Chunk(projectId, \"order\")",
     "CREATE INDEX IF NOT EXISTS AudioVariant_chunkId_idx ON AudioVariant(chunkId)",
 ]
 
-print("Creez tabelele...")
+# Migrări pentru adăugarea coloanelor noi (v4) la tabele existente
+migration_statements = [
+    # Adaugă câmpuri noi la Chunk (dacă nu există)
+    "ALTER TABLE Chunk ADD COLUMN useCustomSettings INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE Chunk ADD COLUMN customVoiceId TEXT",
+    "ALTER TABLE Chunk ADD COLUMN customVoiceSettings TEXT",
+    
+    # Adaugă câmpuri noi la AudioVariant (dacă nu există)
+    "ALTER TABLE AudioVariant ADD COLUMN usedVoiceId TEXT",
+    "ALTER TABLE AudioVariant ADD COLUMN usedVoiceSettings TEXT",
+]
 
-for statement in statements:
+print("Creez tabelele (dacă nu există)...")
+
+for statement in create_statements:
     try:
         conn.execute(statement)
         print(f"✓ Executat: {statement[:60].replace(chr(10), ' ')}...")
     except Exception as e:
-        print(f"✗ Eroare: {e}")
+        print(f"✗ Eroare (posibil tabel existent): {str(e)[:80]}")
+
+print("\nAplic migrările v4...")
+
+for statement in migration_statements:
+    try:
+        conn.execute(statement)
+        print(f"✓ Migrat: {statement[:60]}...")
+    except Exception as e:
+        # Ignorăm erorile de tip "duplicate column" - coloana există deja
+        if "duplicate column" in str(e).lower():
+            print(f"⏭ Coloană existentă, skip: {statement[:40]}...")
+        else:
+            print(f"✗ Eroare: {str(e)[:80]}")
 
 conn.commit()
 
@@ -82,4 +119,18 @@ if tables:
 else:
     print("  (nicio tabelă găsită)")
 
-print("\n✓ Setup Turso complet!")
+# Verifică structura tabelei Chunk
+print("\nStructura tabelei Chunk:")
+result = conn.execute("PRAGMA table_info(Chunk);")
+columns = result.fetchall()
+for col in columns:
+    print(f"  - {col[1]} ({col[2]})")
+
+# Verifică structura tabelei AudioVariant
+print("\nStructura tabelei AudioVariant:")
+result = conn.execute("PRAGMA table_info(AudioVariant);")
+columns = result.fetchall()
+for col in columns:
+    print(f"  - {col[1]} ({col[2]})")
+
+print("\n✓ Setup/Migrare Turso complet!")

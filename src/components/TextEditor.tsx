@@ -10,6 +10,17 @@ export interface ChunkData {
   hasAudio: boolean;
   isGenerating: boolean;
   activeVariantId: string | null;
+  // Câmpuri noi v4
+  useCustomSettings?: boolean;
+  customVoiceId?: string | null;
+  customVoiceSettings?: {
+    stability: number;
+    similarity: number;
+    style: number;
+    speed: number;
+    model: string;
+    speakerBoost: boolean;
+  } | null;
 }
 
 interface TextEditorProps {
@@ -352,8 +363,15 @@ export default function TextEditor({
               }}
               rows={Math.max(2, Math.ceil(chunk.text.length / 80))}
             />
+            {/* Icon pentru setări custom */}
+            {chunk.useCustomSettings && (
+              <div className="absolute top-1 right-2 text-sm" title="Acest chunk are setări custom">
+                ⚙️
+              </div>
+            )}
+            {/* Warning pentru chunk prea lung */}
             {chunk.text.length > MAX_CHUNK_LENGTH && (
-              <div className="absolute top-1 right-2 text-xs text-red-400">
+              <div className={`absolute top-1 ${chunk.useCustomSettings ? 'right-8' : 'right-2'} text-xs text-red-400`}>
                 {chunk.text.length}/{MAX_CHUNK_LENGTH}
               </div>
             )}

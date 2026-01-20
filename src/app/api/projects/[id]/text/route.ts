@@ -154,6 +154,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         hasAudio: chunk.variants.some((v) => v.status === "done"),
         isGenerating: chunk.variants.some((v) => v.status === "processing" || v.status === "queued"),
         activeVariantId: chunk.variants.find((v) => v.isActive)?.id || null,
+        // Câmpuri noi v4
+        useCustomSettings: chunk.useCustomSettings,
+        customVoiceId: chunk.customVoiceId,
+        customVoiceSettings: chunk.customVoiceSettings 
+          ? JSON.parse(chunk.customVoiceSettings) 
+          : null,
       })),
     });
   } catch (error) {
@@ -207,6 +213,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         isGenerating: chunk.variants.some((v) => v.status === "processing" || v.status === "queued"),
         activeVariantId: chunk.variants.find((v) => v.isActive)?.id || null,
         variantsCount: chunk.variants.length,
+        // Câmpuri noi v4
+        useCustomSettings: chunk.useCustomSettings,
+        customVoiceId: chunk.customVoiceId,
+        customVoiceSettings: chunk.customVoiceSettings 
+          ? JSON.parse(chunk.customVoiceSettings) 
+          : null,
       })),
     });
   } catch (error) {

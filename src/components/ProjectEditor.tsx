@@ -15,29 +15,33 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Funcție pentru reîncărcarea chunk-urilor
+  const loadChunks = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}/text`);
+      
+      if (!response.ok) {
+        throw new Error("Eroare la încărcarea textului");
+      }
+      
+      const data = await response.json();
+      setChunks(data.chunks || []);
+    } catch (err) {
+      console.error("Eroare la încărcarea chunk-urilor:", err);
+      setError("Nu s-a putut încărca textul proiectului");
+    }
+  }, [projectId]);
+
   // Încarcă chunk-urile la mount
   useEffect(() => {
-    const loadChunks = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch(`/api/projects/${projectId}/text`);
-        
-        if (!response.ok) {
-          throw new Error("Eroare la încărcarea textului");
-        }
-        
-        const data = await response.json();
-        setChunks(data.chunks || []);
-      } catch (err) {
-        console.error("Eroare la încărcarea chunk-urilor:", err);
-        setError("Nu s-a putut încărca textul proiectului");
-      } finally {
-        setIsLoading(false);
-      }
+    const initialLoad = async () => {
+      setIsLoading(true);
+      await loadChunks();
+      setIsLoading(false);
     };
 
-    loadChunks();
-  }, [projectId]);
+    initialLoad();
+  }, [loadChunks]);
 
   // Handler pentru selectarea unui chunk
   const handleChunkSelect = useCallback((chunkIndex: number | null) => {
@@ -49,7 +53,13 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
     setChunks(newChunks);
   }, []);
 
-  // Chunk-ul selectat
+  // Handler pentru când se schimbă setările unui chunk
+  const handleChunkSettingsChange = useCallback(() => {
+    // Reîncarcă chunk-urile pentru a reflecta schimbările
+    loadChunks();
+  }, [loadChunks]);
+
+  // Chunk-ul selectat (cu toate datele necesare pentru VoiceSettings)
   const selectedChunk = selectedChunkIndex !== null ? chunks[selectedChunkIndex] : null;
 
   if (isLoading) {
@@ -71,8 +81,20 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
   return (
     <div className="flex-1 flex overflow-hidden">
       {/* Coloana 1 - Voice Settings (300px) */}
-      <div className="w-[300px] min-w-[300px] h-full bg-card border-r border-border overflow-y-auto">
-        <VoiceSettings projectId={projectId} />
+      <div className="w-[300px] min-w-[300px] h-full bg-card border-r border-border overflow-hidden">
+        <VoiceSettings 
+          projectId={projectId} 
+          selectedChunk={selectedChunk ? {
+            id: selectedChunk.id,
+            text: selectedChunk.text,
+            order: selectedChunk.order,
+            useCustomSettings: selectedChunk.useCustomSettings || false,
+            customVoiceId: selectedChunk.customVoiceId || null,
+            customVoiceSettings: selectedChunk.customVoiceSettings || null,
+          } : null}
+          selectedChunkIndex={selectedChunkIndex}
+          onChunkSettingsChange={handleChunkSettingsChange}
+        />
       </div>
 
       {/* Coloana 2 - Text Editor (flexibil) */}
@@ -94,7 +116,12 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
           <div>
             {/* Header cu preview text */}
             <div className="mb-4 p-3 bg-background rounded-md border border-border">
-              <div className="text-xs text-secondary mb-1">Chunk selectat</div>
+              <div className="text-xs text-secondary mb-1">
+                Chunk #{selectedChunkIndex !== null ? selectedChunkIndex + 1 : '?'}
+                {selectedChunk.useCustomSettings && (
+                  <span className="ml-2 text-blue-400">⚙️ Setări custom</span>
+                )}
+              </div>
               <div className="text-sm line-clamp-3">
                 {selectedChunk.text.substring(0, 100)}
                 {selectedChunk.text.length > 100 && "..."}
