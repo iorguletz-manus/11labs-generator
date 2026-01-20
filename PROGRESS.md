@@ -1,6 +1,6 @@
 # 11Labs Audiobook Generator - Progres și Decizii
 
-**Ultima actualizare:** 20 Ianuarie 2026
+**Ultima actualizare:** 21 Ianuarie 2026
 
 ---
 
@@ -11,7 +11,7 @@
 | 1 | Setup și Fundație | ✅ Completă | 18 Ian 2026 |
 | 2 | Proiecte CRUD | ✅ Completă | 18 Ian 2026 |
 | 3 | Editor Text și Chunk-uri | ✅ Completă | 18 Ian 2026 |
-| 4 | Setări Voce | ✅ Completă | 20 Ian 2026 |
+| 4 | Setări Voce (v4 - Dual) | ✅ Completă | 21 Ian 2026 |
 | 5 | Generare Audio (ElevenLabs) | ⏳ În așteptare | - |
 | 6 | Audio Queue și Player | ⏳ În așteptare | - |
 | 7 | Export și Concatenare | ⏳ În așteptare | - |
@@ -41,6 +41,7 @@
 | Navigare | /projects → /projects/[id] | Conform specificații v1.1 |
 | Header editor | "← Înapoi" + Nume proiect | Conform specificații v1.1 |
 | Editor text | Textarea per chunk | Simplu și robust |
+| Setări voce | Dual (Default + Custom per Chunk) | Conform specificații v4 |
 
 ---
 
@@ -75,6 +76,7 @@ Environment variables setate în Vercel Dashboard:
 /api/projects/[id]   → GET, PUT (redenumire), DELETE
 /api/projects/[id]/text → GET (chunk-uri), PUT (salvare text)
 /api/projects/[id]/voice → GET, PUT (setări voce)
+/api/chunks/[id]/settings → GET, PUT, DELETE (setări custom per chunk)
 /api/voices          → GET (lista voci ElevenLabs)
 /api/models          → GET (lista modele ElevenLabs)
 ```
@@ -95,12 +97,15 @@ Environment variables setate în Vercel Dashboard:
 - `ProjectEditor.tsx` - Wrapper pentru pagina editor cu 3 coloane
 - API `/api/projects/[id]/text` - Endpoint pentru salvare și sincronizare chunk-uri
 
-### Faza 4
+### Faza 4 (v4 - Sistem Dual)
 
-- `VoiceSettings.tsx` - Panou setări voce cu dropdown și slidere
+- `VoiceSettings.tsx` - Container pentru cele două secțiuni de setări
+- `ProjectSettings.tsx` - Secțiunea "Setări Proiect (Default)"
+- `ChunkSettings.tsx` - Secțiunea "Setări Chunk Selectat"
 - API `/api/voices` - Proxy pentru ElevenLabs voices API
 - API `/api/models` - Proxy pentru ElevenLabs models API
-- API `/api/projects/[id]/voice` - Endpoint pentru salvare setări voce
+- API `/api/projects/[id]/voice` - Endpoint pentru salvare setări voce proiect
+- API `/api/chunks/[id]/settings` - Endpoint pentru setări custom per chunk
 
 ---
 
@@ -120,6 +125,7 @@ Environment variables setate în Vercel Dashboard:
 | Validare lungime | ✅ | Avertisment pentru chunk-uri > 5000 caractere |
 | Selectare chunk | ✅ | Click pe chunk afișează opțiuni audio în panoul drept |
 | Paste multi-linie | ✅ | Text paste-uit cu Enter-uri creează chunk-uri multiple |
+| Icon setări custom | ✅ | ⚙️ pentru chunk-uri cu useCustomSettings = true |
 
 ### Indicatori Vizuali Chunk
 
@@ -128,12 +134,24 @@ Environment variables setate în Vercel Dashboard:
 | Fără audio | Gri (#9CA3AF) |
 | În generare | Albastru (#3B82F6) + animație pulse |
 | Audio generat | Verde (#22C55E) |
+| Setări custom | Icon ⚙️ în colțul dreapta-sus |
 
 ---
 
-## Funcționalități Faza 4
+## Funcționalități Faza 4 (v4)
 
-### Setări Voce
+### Sistem Dual de Setări
+
+| Funcționalitate | Status | Descriere |
+|-----------------|--------|-----------|
+| Secțiunea 1: Setări Proiect | ✅ | Setări default pentru toate chunk-urile |
+| Secțiunea 2: Setări Chunk | ✅ | Apare doar când un chunk este selectat |
+| Radio Default/Custom | ✅ | Toggle între setările proiectului și custom |
+| Salvare automată | ✅ | Setările se salvează imediat la schimbare |
+| Resetare la default | ✅ | Buton pentru a reveni la setările proiectului |
+| Icon ⚙️ pe chunk | ✅ | Indicator vizual pentru chunk-uri cu setări custom |
+
+### Setări Voce (ambele secțiuni)
 
 | Funcționalitate | Status | Descriere |
 |-----------------|--------|-----------|
@@ -143,10 +161,19 @@ Environment variables setate în Vercel Dashboard:
 | Slider Similarity Boost | ✅ | 0-100%, default 75% |
 | Slider Style | ✅ | 0-100%, default 0% |
 | Slider Speed | ✅ | 0.5x-2.0x, default 1.0x |
-| Salvare automată | ✅ | Setările se salvează imediat la schimbare |
-| Persistență | ✅ | Setările sunt salvate per proiect în DB |
 
-### API-uri Noi
+### Schema Prisma (câmpuri noi v4)
+
+**Model Chunk:**
+- `useCustomSettings Boolean @default(false)`
+- `customVoiceId String?`
+- `customVoiceSettings Json?`
+
+**Model AudioVariant:**
+- `usedVoiceId String?`
+- `usedVoiceSettings Json?`
+
+### API-uri Noi/Actualizate
 
 | Endpoint | Metodă | Descriere |
 |----------|--------|-----------|
@@ -154,6 +181,9 @@ Environment variables setate în Vercel Dashboard:
 | `/api/models` | GET | Proxy pentru ElevenLabs models API |
 | `/api/projects/[id]/voice` | GET | Obține setările vocii pentru proiect |
 | `/api/projects/[id]/voice` | PUT | Salvează setările vocii pentru proiect |
+| `/api/chunks/[id]/settings` | GET | Obține setările custom ale unui chunk |
+| `/api/chunks/[id]/settings` | PUT | Salvează setările custom ale unui chunk |
+| `/api/chunks/[id]/settings` | DELETE | Resetează chunk-ul la setările default |
 
 ---
 
@@ -165,6 +195,7 @@ Environment variables setate în Vercel Dashboard:
 4. **Creare proiect:** Modal cu input nume (nu creare directă cu nume default)
 5. **Editor:** Textarea per chunk (nu contentEditable) - mai robust și mai simplu
 6. **Footer statistici:** Eliminat (nu era necesar)
+7. **Setări voce (v4):** Sistem dual cu setări default + custom per chunk
 
 ---
 
@@ -177,22 +208,25 @@ Environment variables setate în Vercel Dashboard:
 | Baza de date Turso goală | Creat script `scripts/setup-turso.py` pentru inițializare |
 | Chunk-uri goale nu se salvau | Modificat API să păstreze chunk-uri goale |
 | Coloana `order` lipsă în Turso | Recreat tabelele cu structura corectă |
+| ElevenLabs models API 401 | API key nu are permisiunea models_read (funcționalitate opțională) |
 
 ---
 
 ## Pași Următori (Faza 5)
 
 1. Integrare ElevenLabs TTS API pentru generare audio
-2. Generare și stocare audio pentru chunk-uri
-3. Border pulsează în timpul generării
-4. Border devine verde la finalizare
-5. Playback în browser
+2. Funcția `getSettingsForChunk()` pentru a determina setările la generare
+3. Salvare snapshot setări în AudioVariant (`usedVoiceId`, `usedVoiceSettings`)
+4. Generare și stocare audio pentru chunk-uri
+5. Border pulsează în timpul generării
+6. Border devine verde la finalizare
+7. Playback în browser
 
 ---
 
 ## Documente Referință
 
-- `Document Final de Specificații pentru Manus v3.md` - Specificații complete (versiunea curentă)
+- `Document Final de Specificații pentru Manus v4.md` - Specificații complete (versiunea curentă)
 - `Workflow Deployment și Migrări.md` - Ghid deployment și backup
 
 ---
