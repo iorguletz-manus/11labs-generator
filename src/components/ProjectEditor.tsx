@@ -295,17 +295,20 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
 
         {/* Coloana 2 - Text Editor (flexibil) */}
         <div className="flex-1 h-full bg-background flex flex-col overflow-hidden">
-          <TextEditor
-            projectId={projectId}
-            initialChunks={chunks}
-            onChunkSelect={handleChunkSelect}
-            onChunksUpdate={handleChunksUpdate}
-            selectedChunkIndex={selectedChunkIndex}
-            onSelectAll={handleSelectAll}
-          />
+          {/* TextEditor cu overflow propriu */}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <TextEditor
+              projectId={projectId}
+              initialChunks={chunks}
+              onChunkSelect={handleChunkSelect}
+              onChunksUpdate={handleChunksUpdate}
+              selectedChunkIndex={selectedChunkIndex}
+              onSelectAll={handleSelectAll}
+            />
+          </div>
           
-          {/* Buton Generează Toate - întotdeauna vizibil */}
-          <div className="p-4 border-t border-border bg-card">
+          {/* Buton Generează Toate - întotdeauna vizibil, fix în partea de jos */}
+          <div className="flex-shrink-0 p-4 border-t border-border bg-card">
             <button
               className={`w-full px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 generatingAll 
