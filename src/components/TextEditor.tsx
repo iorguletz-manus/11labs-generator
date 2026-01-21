@@ -124,18 +124,40 @@ export default function TextEditor({
     triggerAutosave(newChunks);
   }, [chunks, triggerAutosave]);
 
-  // Funcție pentru a verifica dacă cursorul este pe primul rând
+  // Funcție pentru a verifica dacă cursorul este pe primul rând LOGIC (bazat pe \n)
+  // Aceasta verifică dacă nu există niciun \n înainte de cursor
   const isOnFirstLine = (textarea: HTMLTextAreaElement): boolean => {
     const cursorPosition = textarea.selectionStart;
     const textBeforeCursor = textarea.value.substring(0, cursorPosition);
     return !textBeforeCursor.includes('\n');
   };
 
-  // Funcție pentru a verifica dacă cursorul este pe ultimul rând
+  // Funcție pentru a verifica dacă cursorul este pe ultimul rând LOGIC (bazat pe \n)
   const isOnLastLine = (textarea: HTMLTextAreaElement): boolean => {
     const cursorPosition = textarea.selectionStart;
     const textAfterCursor = textarea.value.substring(cursorPosition);
     return !textAfterCursor.includes('\n');
+  };
+
+  // Funcție pentru a verifica dacă săgeata sus ar trebui să navigheze la chunk-ul anterior
+  // Returnează true doar dacă cursorul este pe primul rând ȘI la începutul acestuia
+  const shouldNavigateToPrevChunk = (textarea: HTMLTextAreaElement): boolean => {
+    const cursorPosition = textarea.selectionStart;
+    // Dacă cursorul este la poziția 0, sigur trebuie să trecem la chunk-ul anterior
+    if (cursorPosition === 0) return true;
+    // Altfel, nu navigam - lasăm browser-ul să mute cursorul în sus
+    return false;
+  };
+
+  // Funcție pentru a verifica dacă săgeata jos ar trebui să navigheze la chunk-ul următor
+  // Returnează true doar dacă cursorul este pe ultimul rând ȘI la sfârșitul acestuia
+  const shouldNavigateToNextChunk = (textarea: HTMLTextAreaElement): boolean => {
+    const cursorPosition = textarea.selectionStart;
+    const textLength = textarea.value.length;
+    // Dacă cursorul este la sfârșitul textului, sigur trebuie să trecem la chunk-ul următor
+    if (cursorPosition === textLength) return true;
+    // Altfel, nu navigam - lasăm browser-ul să mute cursorul în jos
+    return false;
   };
 
   // Handler pentru Enter, Backspace, Delete, săgeți și Ctrl+A
@@ -156,26 +178,26 @@ export default function TextEditor({
       return;
     }
 
-    // Săgeată sus - navighează la chunk-ul anterior dacă suntem pe primul rând
-    if (e.key === "ArrowUp" && index > 0 && isOnFirstLine(textarea)) {
+    // Săgeată sus - navighează la chunk-ul anterior DOAR dacă cursorul este la poziția 0
+    if (e.key === "ArrowUp" && index > 0 && shouldNavigateToPrevChunk(textarea)) {
       e.preventDefault();
       const prevTextarea = document.querySelector(`[data-chunk-index="${index - 1}"]`) as HTMLTextAreaElement;
       if (prevTextarea) {
         prevTextarea.focus();
-        // Poziționează cursorul la sfârșitul ultimului rând
+        // Poziționează cursorul la sfârșitul textului din chunk-ul anterior
         prevTextarea.setSelectionRange(prevTextarea.value.length, prevTextarea.value.length);
         onChunkSelect?.(index - 1);
       }
       return;
     }
 
-    // Săgeată jos - navighează la chunk-ul următor dacă suntem pe ultimul rând
-    if (e.key === "ArrowDown" && index < chunks.length - 1 && isOnLastLine(textarea)) {
+    // Săgeată jos - navighează la chunk-ul următor DOAR dacă cursorul este la sfârșitul textului
+    if (e.key === "ArrowDown" && index < chunks.length - 1 && shouldNavigateToNextChunk(textarea)) {
       e.preventDefault();
       const nextTextarea = document.querySelector(`[data-chunk-index="${index + 1}"]`) as HTMLTextAreaElement;
       if (nextTextarea) {
         nextTextarea.focus();
-        // Poziționează cursorul la începutul primului rând
+        // Poziționează cursorul la începutul textului din chunk-ul următor
         nextTextarea.setSelectionRange(0, 0);
         onChunkSelect?.(index + 1);
       }
