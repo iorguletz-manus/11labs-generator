@@ -291,11 +291,6 @@ export default function TextEditor({
     }
   }, [chunks, triggerAutosave]);
 
-  // Generează toate chunk-urile fără audio
-  const handleGenerateAll = useCallback(() => {
-    console.log("Generează toate - va fi implementat în Faza 7");
-  }, []);
-
   // Cleanup la unmount
   useEffect(() => {
     return () => {
@@ -307,18 +302,39 @@ export default function TextEditor({
 
   // Obține clasa pentru border în funcție de status
   const getBorderClass = (chunk: ChunkData, isSelected: boolean) => {
-    let borderColor = "border-gray-400"; // Fără audio
+    const classes: string[] = [];
     
+    // Border color based on audio status
     if (chunk.isGenerating) {
-      borderColor = "border-blue-500 animate-pulse";
+      classes.push("border-blue-500");
+      classes.push("shadow-[0_0_10px_rgba(59,130,246,0.5)]"); // Glow effect
     } else if (chunk.hasAudio) {
-      borderColor = "border-green-500";
+      classes.push("border-green-500");
+    } else {
+      classes.push("border-gray-400");
     }
     
-    const bgColor = isSelected ? "bg-blue-500/10" : "";
-    const warningBg = chunk.text.length > MAX_CHUNK_LENGTH ? "bg-red-500/10" : "";
+    // Background for selected chunk
+    if (isSelected) {
+      classes.push("bg-blue-500/10");
+    }
     
-    return `${borderColor} ${bgColor} ${warningBg}`;
+    // Warning background for chunks over limit
+    if (chunk.text.length > MAX_CHUNK_LENGTH) {
+      classes.push("bg-red-500/10");
+    }
+    
+    return classes.join(" ");
+  };
+  
+  // Obține stilul pentru animație pulse
+  const getPulseStyle = (chunk: ChunkData) => {
+    if (chunk.isGenerating) {
+      return {
+        animation: "pulse 1.5s ease-in-out infinite",
+      };
+    }
+    return {};
   };
 
   return (
@@ -356,10 +372,11 @@ export default function TextEditor({
               onClick={() => handleChunkClick(index)}
               onPaste={(e) => handlePaste(e, index)}
               placeholder={index === 0 ? "Scrie sau lipește textul aici..." : ""}
-              className={`w-full min-h-[60px] p-3 pl-4 border-l-4 resize-none bg-transparent focus:outline-none focus:ring-1 focus:ring-primary/30 rounded-r ${getBorderClass(chunk, selectedChunkIndex === index)}`}
+              className={`w-full min-h-[60px] p-3 pl-4 border-l-4 resize-none bg-transparent focus:outline-none focus:ring-1 focus:ring-primary/30 rounded-r transition-all duration-300 ${getBorderClass(chunk, selectedChunkIndex === index)}`}
               style={{ 
                 borderLeftWidth: "4px",
                 height: "auto",
+                ...getPulseStyle(chunk),
               }}
               rows={Math.max(2, Math.ceil(chunk.text.length / 80))}
             />
@@ -379,17 +396,7 @@ export default function TextEditor({
         ))}
       </div>
 
-      {/* Footer cu butonul Generează Toate */}
-      <div className="px-4 py-3 border-t border-border bg-card">
-        <div className="flex items-center justify-end">
-          <button
-            onClick={handleGenerateAll}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm font-medium"
-          >
-            Generează Toate
-          </button>
-        </div>
-      </div>
+
     </div>
   );
 }
