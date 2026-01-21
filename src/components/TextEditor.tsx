@@ -29,6 +29,7 @@ interface TextEditorProps {
   onChunkSelect?: (chunkIndex: number | null) => void;
   onChunksUpdate?: (chunks: ChunkData[]) => void;
   selectedChunkIndex?: number | null;
+  onSelectAll?: () => void; // Callback pentru Ctrl+A
 }
 
 // Constante
@@ -41,11 +42,13 @@ export default function TextEditor({
   onChunkSelect,
   onChunksUpdate,
   selectedChunkIndex,
+  onSelectAll,
 }: TextEditorProps) {
   const [chunks, setChunks] = useState<ChunkData[]>(initialChunks);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
   const [lastSavedText, setLastSavedText] = useState<string>("");
   const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
 
   // Calculează chunk-uri peste limită
   const chunksOverLimit = chunks.filter((chunk) => chunk.text.length > MAX_CHUNK_LENGTH);
@@ -121,7 +124,21 @@ export default function TextEditor({
     triggerAutosave(newChunks);
   }, [chunks, triggerAutosave]);
 
-  // Handler pentru Enter, Backspace și Delete
+  // Funcție pentru a verifica dacă cursorul este pe primul rând
+  const isOnFirstLine = (textarea: HTMLTextAreaElement): boolean => {
+    const cursorPosition = textarea.selectionStart;
+    const textBeforeCursor = textarea.value.substring(0, cursorPosition);
+    return !textBeforeCursor.includes('\n');
+  };
+
+  // Funcție pentru a verifica dacă cursorul este pe ultimul rând
+  const isOnLastLine = (textarea: HTMLTextAreaElement): boolean => {
+    const cursorPosition = textarea.selectionStart;
+    const textAfterCursor = textarea.value.substring(cursorPosition);
+    return !textAfterCursor.includes('\n');
+  };
+
+  // Handler pentru Enter, Backspace, Delete, săgeți și Ctrl+A
   const handleKeyDown = useCallback((e: React.KeyboardEvent, index: number) => {
     const textarea = e.target as HTMLTextAreaElement;
     
@@ -129,6 +146,39 @@ export default function TextEditor({
     if ((e.ctrlKey || e.metaKey) && e.key === "s") {
       e.preventDefault();
       saveText(chunks);
+      return;
+    }
+
+    // Ctrl+A - selectează toate chunk-urile
+    if ((e.ctrlKey || e.metaKey) && e.key === "a") {
+      e.preventDefault();
+      onSelectAll?.();
+      return;
+    }
+
+    // Săgeată sus - navighează la chunk-ul anterior dacă suntem pe primul rând
+    if (e.key === "ArrowUp" && index > 0 && isOnFirstLine(textarea)) {
+      e.preventDefault();
+      const prevTextarea = document.querySelector(`[data-chunk-index="${index - 1}"]`) as HTMLTextAreaElement;
+      if (prevTextarea) {
+        prevTextarea.focus();
+        // Poziționează cursorul la sfârșitul ultimului rând
+        prevTextarea.setSelectionRange(prevTextarea.value.length, prevTextarea.value.length);
+        onChunkSelect?.(index - 1);
+      }
+      return;
+    }
+
+    // Săgeată jos - navighează la chunk-ul următor dacă suntem pe ultimul rând
+    if (e.key === "ArrowDown" && index < chunks.length - 1 && isOnLastLine(textarea)) {
+      e.preventDefault();
+      const nextTextarea = document.querySelector(`[data-chunk-index="${index + 1}"]`) as HTMLTextAreaElement;
+      if (nextTextarea) {
+        nextTextarea.focus();
+        // Poziționează cursorul la începutul primului rând
+        nextTextarea.setSelectionRange(0, 0);
+        onChunkSelect?.(index + 1);
+      }
       return;
     }
 
@@ -165,6 +215,7 @@ export default function TextEditor({
         if (nextTextarea) {
           nextTextarea.focus();
           nextTextarea.setSelectionRange(0, 0);
+          onChunkSelect?.(index + 1);
         }
       }, 0);
     }
@@ -199,6 +250,7 @@ export default function TextEditor({
         if (prevTextarea) {
           prevTextarea.focus();
           prevTextarea.setSelectionRange(cursorPosition, cursorPosition);
+          onChunkSelect?.(index - 1);
         }
       }, 0);
     }
@@ -236,7 +288,7 @@ export default function TextEditor({
         }
       }, 0);
     }
-  }, [chunks, saveText, triggerAutosave]);
+  }, [chunks, saveText, triggerAutosave, onChunkSelect, onSelectAll]);
 
   // Handler pentru click pe chunk
   const handleChunkClick = useCallback((index: number) => {
@@ -291,6 +343,14 @@ export default function TextEditor({
     }
   }, [chunks, triggerAutosave]);
 
+  // Handler pentru click în afara chunk-urilor
+  const handleEditorClick = useCallback((e: React.MouseEvent) => {
+    // Verifică dacă click-ul a fost direct pe container, nu pe un textarea
+    if (e.target === editorRef.current) {
+      onChunkSelect?.(null);
+    }
+  }, [onChunkSelect]);
+
   // Cleanup la unmount
   useEffect(() => {
     return () => {
@@ -342,10 +402,15 @@ export default function TextEditor({
       {/* Header Editor */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-border">
         <h2 className="text-lg font-semibold">Text Editor</h2>
-        <div className="text-sm text-secondary">
-          {saveStatus === "saving" && "Se salvează..."}
-          {saveStatus === "saved" && "Salvat ✓"}
-          {saveStatus === "unsaved" && "Nesalvat"}
+        <div className="flex items-center gap-4">
+          <span className="text-xs text-secondary">
+            {chunks.length} chunk{chunks.length !== 1 ? '-uri' : ''}
+          </span>
+          <div className="text-sm text-secondary">
+            {saveStatus === "saving" && "Se salvează..."}
+            {saveStatus === "saved" && "Salvat ✓"}
+            {saveStatus === "unsaved" && "Nesalvat"}
+          </div>
         </div>
       </div>
 
@@ -358,7 +423,11 @@ export default function TextEditor({
       )}
 
       {/* Editor Area */}
-      <div className="flex-1 p-4 overflow-y-auto bg-background">
+      <div 
+        ref={editorRef}
+        className="flex-1 p-4 overflow-y-auto bg-background"
+        onClick={handleEditorClick}
+      >
         {chunks.map((chunk, index) => (
           <div
             key={chunk.id}
@@ -369,7 +438,10 @@ export default function TextEditor({
               value={chunk.text}
               onChange={(e) => handleChunkChange(index, e.target.value)}
               onKeyDown={(e) => handleKeyDown(e, index)}
-              onClick={() => handleChunkClick(index)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleChunkClick(index);
+              }}
               onPaste={(e) => handlePaste(e, index)}
               placeholder={index === 0 ? "Scrie sau lipește textul aici..." : ""}
               className={`w-full min-h-[60px] p-3 pl-4 border-l-4 resize-none bg-transparent focus:outline-none focus:ring-1 focus:ring-primary/30 rounded-r transition-all duration-300 ${getBorderClass(chunk, selectedChunkIndex === index)}`}
@@ -395,8 +467,6 @@ export default function TextEditor({
           </div>
         ))}
       </div>
-
-
     </div>
   );
 }
