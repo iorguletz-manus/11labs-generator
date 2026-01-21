@@ -12,7 +12,7 @@
 | 2 | Proiecte CRUD | ✅ Completă | 18 Ian 2026 |
 | 3 | Editor Text și Chunk-uri | ✅ Completă | 18 Ian 2026 |
 | 4 | Setări Voce (v4 - Dual) | ✅ Completă | 21 Ian 2026 |
-| 5 | Generare Audio (ElevenLabs) | ⏳ În așteptare | - |
+| 5 | Generare Audio (ElevenLabs) | ✅ Completă | 21 Ian 2026 |
 | 6 | Audio Queue și Player | ⏳ În așteptare | - |
 | 7 | Export și Concatenare | ⏳ În așteptare | - |
 | 8 | Polish și Optimizări | ⏳ În așteptare | - |
@@ -77,6 +77,8 @@ Environment variables setate în Vercel Dashboard:
 /api/projects/[id]/text → GET (chunk-uri), PUT (salvare text)
 /api/projects/[id]/voice → GET, PUT (setări voce)
 /api/chunks/[id]/settings → GET, PUT, DELETE (setări custom per chunk)
+/api/chunks/[id]/generate → GET (variante), POST (generare audio)
+/api/audio/[variantId] → GET (streaming audio pentru playback)
 /api/voices          → GET (lista voci ElevenLabs)
 /api/models          → GET (lista modele ElevenLabs)
 ```
@@ -107,6 +109,14 @@ Environment variables setate în Vercel Dashboard:
 - API `/api/projects/[id]/voice` - Endpoint pentru salvare setări voce proiect
 - API `/api/chunks/[id]/settings` - Endpoint pentru setări custom per chunk
 
+### Faza 5 (Generare Audio)
+
+- API `/api/chunks/[id]/generate` - Endpoint pentru generare audio cu ElevenLabs
+- API `/api/audio/[variantId]` - Endpoint pentru streaming audio (playback)
+- Funcția `getSettingsForChunk()` - Determină setările de folosit (default vs custom)
+- Player audio în Coloana 3 cu Play/Pause și progress bar
+- Buton "Generează Toate" pentru generare în batch
+
 ---
 
 ## Funcționalități Faza 3
@@ -132,7 +142,7 @@ Environment variables setate în Vercel Dashboard:
 | Status | Culoare Border |
 |--------|----------------|
 | Fără audio | Gri (#9CA3AF) |
-| În generare | Albastru (#3B82F6) + animație pulse |
+| În generare | Albastru (#3B82F6) + glow effect |
 | Audio generat | Verde (#22C55E) |
 | Setări custom | Icon ⚙️ în colțul dreapta-sus |
 
@@ -146,7 +156,8 @@ Environment variables setate în Vercel Dashboard:
 |-----------------|--------|-----------|
 | Secțiunea 1: Setări Proiect | ✅ | Setări default pentru toate chunk-urile |
 | Secțiunea 2: Setări Chunk | ✅ | Apare doar când un chunk este selectat |
-| Radio Default/Custom | ✅ | Toggle între setările proiectului și custom |
+| Toggle ON/OFF | ✅ | Toggle între setările proiectului și custom |
+| Collapse/Expand | ✅ | Când custom ON, default collapsed și invers |
 | Salvare automată | ✅ | Setările se salvează imediat la schimbare |
 | Resetare la default | ✅ | Buton pentru a reveni la setările proiectului |
 | Icon ⚙️ pe chunk | ✅ | Indicator vizual pentru chunk-uri cu setări custom |
@@ -173,17 +184,40 @@ Environment variables setate în Vercel Dashboard:
 - `usedVoiceId String?`
 - `usedVoiceSettings Json?`
 
-### API-uri Noi/Actualizate
+---
+
+## Funcționalități Faza 5
+
+### Generare Audio
+
+| Funcționalitate | Status | Descriere |
+|-----------------|--------|-----------|
+| Endpoint generare | ✅ | POST /api/chunks/[id]/generate |
+| Endpoint streaming | ✅ | GET /api/audio/[variantId] |
+| getSettingsForChunk() | ✅ | Determină setările (default vs custom) |
+| Salvare snapshot | ✅ | usedVoiceId și usedVoiceSettings în AudioVariant |
+| Stocare audio | ✅ | Audio salvat ca Buffer în baza de date |
+| Indicator generare | ✅ | "Se generează audio..." cu animație |
+| Player audio | ✅ | Play/Pause și progress bar |
+| Buton regenerare | ✅ | "🔄 Regenerează Audio" |
+| Generează Toate | ✅ | Generare în batch pentru toate chunk-urile |
+
+### API-uri Faza 5
 
 | Endpoint | Metodă | Descriere |
 |----------|--------|-----------|
-| `/api/voices` | GET | Proxy pentru ElevenLabs voices API |
-| `/api/models` | GET | Proxy pentru ElevenLabs models API |
-| `/api/projects/[id]/voice` | GET | Obține setările vocii pentru proiect |
-| `/api/projects/[id]/voice` | PUT | Salvează setările vocii pentru proiect |
-| `/api/chunks/[id]/settings` | GET | Obține setările custom ale unui chunk |
-| `/api/chunks/[id]/settings` | PUT | Salvează setările custom ale unui chunk |
-| `/api/chunks/[id]/settings` | DELETE | Resetează chunk-ul la setările default |
+| `/api/chunks/[id]/generate` | POST | Generează audio pentru un chunk |
+| `/api/chunks/[id]/generate` | GET | Obține lista variantelor audio |
+| `/api/audio/[variantId]` | GET | Streaming audio MP3 pentru playback |
+
+### Logica getSettingsForChunk()
+
+```
+Dacă chunk.useCustomSettings === true && chunk.customVoiceId:
+  → folosește chunk.customVoiceId + chunk.customVoiceSettings
+Altfel:
+  → folosește project.voiceId + project.voiceSettings
+```
 
 ---
 
@@ -212,15 +246,13 @@ Environment variables setate în Vercel Dashboard:
 
 ---
 
-## Pași Următori (Faza 5)
+## Pași Următori (Faza 6)
 
-1. Integrare ElevenLabs TTS API pentru generare audio
-2. Funcția `getSettingsForChunk()` pentru a determina setările la generare
-3. Salvare snapshot setări în AudioVariant (`usedVoiceId`, `usedVoiceSettings`)
-4. Generare și stocare audio pentru chunk-uri
-5. Border pulsează în timpul generării
-6. Border devine verde la finalizare
-7. Playback în browser
+1. Implementare queue pentru generare audio în paralel
+2. Afișare progres pentru generare multiplă
+3. Gestionare erori și retry
+4. Optimizări player audio
+5. Afișare setări folosite la generare în UI
 
 ---
 
