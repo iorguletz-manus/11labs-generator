@@ -15,6 +15,8 @@ interface GenerateSettings {
   settings: VoiceSettings;
 }
 
+const MAX_VARIANTS = 5;
+
 // Funcția getSettingsForChunk - determină setările de folosit la generare
 async function getSettingsForChunk(chunkId: string): Promise<GenerateSettings | null> {
   const chunk = await prisma.chunk.findUnique({
@@ -69,78 +71,26 @@ async function getSettingsForChunk(chunkId: string): Promise<GenerateSettings | 
   };
 }
 
-// POST /api/chunks/[id]/generate - Generează audio pentru un chunk
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+// Funcție pentru a genera o singură variantă audio
+async function generateSingleVariant(
+  chunk: { id: string; text: string },
+  variantNumber: number,
+  generateSettings: GenerateSettings,
+  apiKey: string
+): Promise<{ success: boolean; variantId: string; error?: string }> {
+  // Creează varianta cu status "processing"
+  const variant = await prisma.audioVariant.create({
+    data: {
+      chunkId: chunk.id,
+      variantNumber,
+      status: "processing",
+      progress: 0,
+      usedVoiceId: generateSettings.voiceId,
+      usedVoiceSettings: JSON.stringify(generateSettings.settings),
+    },
+  });
+
   try {
-    const { id: chunkId } = await params;
-
-    // Verifică dacă chunk-ul există
-    const chunk = await prisma.chunk.findUnique({
-      where: { id: chunkId },
-    });
-
-    if (!chunk) {
-      return NextResponse.json(
-        { error: "Chunk-ul nu a fost găsit" },
-        { status: 404 }
-      );
-    }
-
-    if (!chunk.text || chunk.text.trim() === "") {
-      return NextResponse.json(
-        { error: "Chunk-ul nu are text" },
-        { status: 400 }
-      );
-    }
-
-    // Obține setările pentru generare
-    const generateSettings = await getSettingsForChunk(chunkId);
-
-    if (!generateSettings) {
-      return NextResponse.json(
-        { error: "Nu există o voce configurată. Selectează o voce în setările proiectului sau chunk-ului." },
-        { status: 400 }
-      );
-    }
-
-    // Determină numărul variantei (următorul număr disponibil)
-    const existingVariants = await prisma.audioVariant.count({
-      where: { chunkId },
-    });
-    const variantNumber = existingVariants + 1;
-
-    // Creează varianta cu status "processing"
-    const variant = await prisma.audioVariant.create({
-      data: {
-        chunkId,
-        variantNumber,
-        status: "processing",
-        progress: 0,
-        usedVoiceId: generateSettings.voiceId,
-        usedVoiceSettings: JSON.stringify(generateSettings.settings),
-      },
-    });
-
-    // Apelează ElevenLabs API
-    const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
-    
-    if (!ELEVENLABS_API_KEY) {
-      await prisma.audioVariant.update({
-        where: { id: variant.id },
-        data: {
-          status: "error",
-          errorMessage: "API key ElevenLabs nu este configurat",
-        },
-      });
-      return NextResponse.json(
-        { error: "API key ElevenLabs nu este configurat" },
-        { status: 500 }
-      );
-    }
-
     const { voiceId, settings } = generateSettings;
 
     // Construiește request-ul pentru ElevenLabs
@@ -151,7 +101,7 @@ export async function POST(
         headers: {
           "Accept": "audio/mpeg",
           "Content-Type": "application/json",
-          "xi-api-key": ELEVENLABS_API_KEY,
+          "xi-api-key": apiKey,
         },
         body: JSON.stringify({
           text: chunk.text,
@@ -185,10 +135,7 @@ export async function POST(
         },
       });
 
-      return NextResponse.json(
-        { error: errorMessage },
-        { status: elevenLabsResponse.status }
-      );
+      return { success: false, variantId: variant.id, error: errorMessage };
     }
 
     // Obține audio-ul ca ArrayBuffer și convertește la Buffer
@@ -206,16 +153,128 @@ export async function POST(
       },
     });
 
-    // Returnează informații despre varianta creată
+    return { success: true, variantId: variant.id };
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Eroare necunoscută";
+    
+    await prisma.audioVariant.update({
+      where: { id: variant.id },
+      data: {
+        status: "error",
+        errorMessage,
+      },
+    });
+
+    return { success: false, variantId: variant.id, error: errorMessage };
+  }
+}
+
+// POST /api/chunks/[id]/generate - Generează 5 variante audio pentru un chunk
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: chunkId } = await params;
+
+    // Verifică dacă chunk-ul există
+    const chunk = await prisma.chunk.findUnique({
+      where: { id: chunkId },
+    });
+
+    if (!chunk) {
+      return NextResponse.json(
+        { error: "Chunk-ul nu a fost găsit" },
+        { status: 404 }
+      );
+    }
+
+    if (!chunk.text || chunk.text.trim() === "") {
+      return NextResponse.json(
+        { error: "Chunk-ul nu are text" },
+        { status: 400 }
+      );
+    }
+
+    // Verifică dacă există deja variante
+    const existingVariants = await prisma.audioVariant.count({
+      where: { chunkId },
+    });
+
+    if (existingVariants >= MAX_VARIANTS) {
+      return NextResponse.json(
+        { error: `Chunk-ul are deja ${MAX_VARIANTS} variante. Șterge una pentru a genera alta.` },
+        { status: 400 }
+      );
+    }
+
+    // Obține setările pentru generare
+    const generateSettings = await getSettingsForChunk(chunkId);
+
+    if (!generateSettings) {
+      return NextResponse.json(
+        { error: "Nu există o voce configurată. Selectează o voce în setările proiectului sau chunk-ului." },
+        { status: 400 }
+      );
+    }
+
+    const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+    
+    if (!ELEVENLABS_API_KEY) {
+      return NextResponse.json(
+        { error: "API key ElevenLabs nu este configurat" },
+        { status: 500 }
+      );
+    }
+
+    // Calculează câte variante mai putem genera
+    const variantsToGenerate = Math.min(MAX_VARIANTS - existingVariants, MAX_VARIANTS);
+    const startVariantNumber = existingVariants + 1;
+
+    // Generează toate variantele în paralel
+    const generationPromises = [];
+    for (let i = 0; i < variantsToGenerate; i++) {
+      const variantNumber = startVariantNumber + i;
+      generationPromises.push(
+        generateSingleVariant(
+          { id: chunkId, text: chunk.text },
+          variantNumber,
+          generateSettings,
+          ELEVENLABS_API_KEY
+        )
+      );
+    }
+
+    // Așteaptă toate generările
+    const results = await Promise.all(generationPromises);
+
+    // Numără succesele și erorile
+    const successful = results.filter(r => r.success).length;
+    const failed = results.filter(r => !r.success).length;
+
+    // Obține toate variantele actualizate
+    const allVariants = await prisma.audioVariant.findMany({
+      where: { chunkId },
+      orderBy: { variantNumber: "asc" },
+    });
+
     return NextResponse.json({
       success: true,
-      variant: {
-        id: variant.id,
-        variantNumber,
-        status: "done",
-        usedVoiceId: generateSettings.voiceId,
-        usedVoiceSettings: generateSettings.settings,
-      },
+      message: `Generate ${successful} variante cu succes${failed > 0 ? `, ${failed} au eșuat` : ""}`,
+      totalVariants: allVariants.length,
+      variants: allVariants.map((v) => ({
+        id: v.id,
+        variantNumber: v.variantNumber,
+        status: v.status,
+        progress: v.progress,
+        isActive: v.isActive,
+        errorMessage: v.errorMessage,
+        usedVoiceId: v.usedVoiceId,
+        usedVoiceSettings: v.usedVoiceSettings ? JSON.parse(v.usedVoiceSettings) : null,
+        hasAudio: !!(v.audioData || v.audioUrl),
+        createdAt: v.createdAt,
+      })),
     });
 
   } catch (error) {
