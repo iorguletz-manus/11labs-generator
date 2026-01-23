@@ -396,9 +396,10 @@ export default function TextEditor({
       classes.push("border-gray-400");
     }
     
-    // Background for selected chunk
+    // Background for selected chunk - mai vizibil
     if (isSelected) {
-      classes.push("bg-blue-500/10");
+      classes.push("bg-slate-700/50"); // Background mai închis pentru selecție
+      classes.push("ring-2 ring-primary/50"); // Ring pentru vizibilitate
     }
     
     // Warning background for chunks over limit

@@ -519,11 +519,23 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
                             <div className="flex items-center gap-1">
                               {variant.hasAudio && variant.status === "done" && (
                                 <button
-                                  onClick={() => handlePlayChunk(selectedChunk, variant.id)}
-                                  className="p-1.5 bg-green-500/20 text-green-400 rounded hover:bg-green-500/30 transition-colors"
-                                  title="Redă"
+                                  onClick={() => {
+                                    if (currentAudioVariantId === variant.id && isPlaying) {
+                                      // Dacă această variantă se redă, o punem pe pauză
+                                      audioRef.current?.pause();
+                                    } else {
+                                      // Altfel, o redăm
+                                      handlePlayChunk(selectedChunk, variant.id);
+                                    }
+                                  }}
+                                  className={`p-1.5 rounded transition-colors ${
+                                    currentAudioVariantId === variant.id && isPlaying
+                                      ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
+                                      : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                                  }`}
+                                  title={currentAudioVariantId === variant.id && isPlaying ? "Pauză" : "Redă"}
                                 >
-                                  ▶
+                                  {currentAudioVariantId === variant.id && isPlaying ? '⏸' : '▶'}
                                 </button>
                               )}
                               <button
