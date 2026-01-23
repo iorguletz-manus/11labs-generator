@@ -415,173 +415,184 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
         </div>
 
         {/* Coloana 3 - Audio Panel (350px) */}
-        <div className="w-[350px] min-w-[350px] h-full bg-card border-l border-border p-4 overflow-y-auto">
-          <h2 className="text-lg font-semibold mb-4">Audio</h2>
+        <div className="w-[350px] min-w-[350px] h-full bg-card border-l border-border flex flex-col overflow-hidden">
+          {/* Header */}
+          <div className="flex-shrink-0 p-4 pb-2">
+            <h2 className="text-lg font-semibold">Audio</h2>
+          </div>
           
           {selectedChunk ? (
-            <div>
-              {/* Header cu preview text */}
-              <div className="mb-4 p-3 bg-background rounded-md border border-border">
-                <div className="text-xs text-secondary mb-1">
-                  Chunk #{selectedChunkIndex !== null ? selectedChunkIndex + 1 : '?'}
-                  {selectedChunk.useCustomSettings && (
-                    <span className="ml-2 text-blue-400">⚙️ Setări custom</span>
-                  )}
-                </div>
-                <div className="text-sm line-clamp-3">
-                  {selectedChunk.text.substring(0, 100)}
-                  {selectedChunk.text.length > 100 && "..."}
-                </div>
-              </div>
-
-              {/* Eroare */}
-              {audioError && (
-                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-md">
-                  <div className="text-sm text-red-400">{audioError}</div>
-                </div>
-              )}
-
-              {/* Status generare */}
-              {isGenerating && (
-                <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-md">
-                  <div className="text-sm text-blue-400 animate-pulse flex items-center gap-2">
-                    <span className="animate-spin">⏳</span>
-                    Se generează 5 variante audio...
+            <>
+              {/* Zona scrollabilă cu variante */}
+              <div className="flex-1 overflow-y-auto px-4">
+                {/* Header cu preview text */}
+                <div className="mb-4 p-3 bg-background rounded-md border border-border">
+                  <div className="text-xs text-secondary mb-1">
+                    Chunk #{selectedChunkIndex !== null ? selectedChunkIndex + 1 : '?'}
+                    {selectedChunk.useCustomSettings && (
+                      <span className="ml-2 text-blue-400">⚙️ Setări custom</span>
+                    )}
+                  </div>
+                  <div className="text-sm line-clamp-3">
+                    {selectedChunk.text.substring(0, 100)}
+                    {selectedChunk.text.length > 100 && "..."}
                   </div>
                 </div>
-              )}
 
-              {/* Buton generare - doar dacă nu există variante */}
-              {audioVariants.length === 0 && !isGenerating && (
-                <div className="space-y-3">
+                {/* Eroare */}
+                {audioError && (
+                  <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-md">
+                    <div className="text-sm text-red-400">{audioError}</div>
+                  </div>
+                )}
+
+                {/* Status generare */}
+                {isGenerating && (
+                  <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-md">
+                    <div className="text-sm text-blue-400 animate-pulse flex items-center gap-2">
+                      <span className="animate-spin">⏳</span>
+                      Se generează 5 variante audio...
+                    </div>
+                  </div>
+                )}
+
+                {/* Mesaj când nu există variante */}
+                {audioVariants.length === 0 && !isGenerating && (
                   <div className="p-3 bg-gray-500/10 border border-gray-500/30 rounded-md">
                     <div className="text-sm text-secondary">
                       Nu există audio pentru acest chunk.
                     </div>
                   </div>
-                  <button
-                    className="w-full px-4 py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm font-medium"
-                    onClick={handleGenerateAudio}
-                    disabled={isGenerating}
-                  >
-                    🎙️ Generează 5 Variante Audio
-                  </button>
-                </div>
-              )}
+                )}
 
-              {/* Lista variantelor */}
-              {audioVariants.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <h4 className="text-sm font-medium">
-                      Variante ({completedVariants}/5)
-                    </h4>
-                    {completedVariants < 5 && !isGenerating && (
-                      <button
-                        onClick={handleGenerateAudio}
-                        className="text-xs text-blue-400 hover:text-blue-300"
-                      >
-                        + Generează mai multe
-                      </button>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    {audioVariants.map((variant) => (
-                      <div
-                        key={variant.id}
-                        className={`p-3 rounded-md border transition-colors ${
-                          variant.isActive 
-                            ? 'border-green-500 bg-green-500/10' 
-                            : 'border-border bg-background hover:border-border/80'
-                        }`}
-                      >
-                        {/* Header variantă */}
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex items-center gap-2">
-                            {/* Radio button pentru activare */}
-                            <button
-                              onClick={() => variant.hasAudio && handleActivateVariant(variant.id)}
-                              disabled={!variant.hasAudio || variant.status !== "done"}
-                              className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
-                                variant.isActive 
-                                  ? 'border-green-500 bg-green-500' 
-                                  : variant.hasAudio 
-                                    ? 'border-gray-400 hover:border-green-400' 
-                                    : 'border-gray-600 cursor-not-allowed'
-                              }`}
-                            >
-                              {variant.isActive && (
-                                <div className="w-2 h-2 rounded-full bg-white" />
-                              )}
-                            </button>
-                            
-                            <span className="font-medium text-sm">
-                              Varianta {variant.variantNumber}
-                            </span>
-                            
-                            {variant.isActive && (
-                              <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-400 rounded">
-                                Activă
+                {/* Lista variantelor */}
+                {audioVariants.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-sm font-medium">
+                        Variante ({completedVariants})
+                      </h4>
+                    </div>
+                    
+                    <div className="space-y-2 pb-2">
+                      {audioVariants.map((variant) => (
+                        <div
+                          key={variant.id}
+                          className={`p-3 rounded-md border transition-colors ${
+                            variant.isActive 
+                              ? 'border-green-500 bg-green-500/10' 
+                              : 'border-border bg-background hover:border-border/80'
+                          }`}
+                        >
+                          {/* Header variantă */}
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex items-center gap-2">
+                              {/* Radio button pentru activare */}
+                              <button
+                                onClick={() => variant.hasAudio && handleActivateVariant(variant.id)}
+                                disabled={!variant.hasAudio || variant.status !== "done"}
+                                className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
+                                  variant.isActive 
+                                    ? 'border-green-500 bg-green-500' 
+                                    : variant.hasAudio 
+                                      ? 'border-gray-400 hover:border-green-400' 
+                                      : 'border-gray-600 cursor-not-allowed'
+                                }`}
+                              >
+                                {variant.isActive && (
+                                  <div className="w-2 h-2 rounded-full bg-white" />
+                                )}
+                              </button>
+                              
+                              <span className="font-medium text-sm">
+                                Varianta {variant.variantNumber}
                               </span>
-                            )}
+                              
+                              {variant.isActive && (
+                                <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-400 rounded">
+                                  Activă
+                                </span>
+                              )}
+                            </div>
+                            
+                            {/* Butoane acțiuni */}
+                            <div className="flex items-center gap-1">
+                              {variant.hasAudio && variant.status === "done" && (
+                                <button
+                                  onClick={() => handlePlayChunk(selectedChunk, variant.id)}
+                                  className="p-1.5 bg-green-500/20 text-green-400 rounded hover:bg-green-500/30 transition-colors"
+                                  title="Redă"
+                                >
+                                  ▶
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDeleteVariant(variant.id)}
+                                className="p-1.5 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors"
+                                title="Șterge"
+                              >
+                                🗑
+                              </button>
+                            </div>
                           </div>
                           
-                          {/* Butoane acțiuni */}
-                          <div className="flex items-center gap-1">
-                            {variant.hasAudio && variant.status === "done" && (
-                              <button
-                                onClick={() => handlePlayChunk(selectedChunk, variant.id)}
-                                className="p-1.5 bg-green-500/20 text-green-400 rounded hover:bg-green-500/30 transition-colors"
-                                title="Redă"
-                              >
-                                ▶
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleDeleteVariant(variant.id)}
-                              className="p-1.5 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors"
-                              title="Șterge"
-                            >
-                              🗑
-                            </button>
-                          </div>
+                          {/* Status */}
+                          {variant.status === "processing" && (
+                            <div className="text-xs text-blue-400 animate-pulse">
+                              ⏳ Se generează...
+                            </div>
+                          )}
+                          
+                          {variant.status === "error" && (
+                            <div className="text-xs text-red-400">
+                              ❌ {variant.errorMessage || "Eroare la generare"}
+                            </div>
+                          )}
+                          
+                          {/* Setări folosite */}
+                          {variant.hasAudio && variant.status === "done" && variant.usedVoiceSettings && (
+                            <div className="text-xs text-secondary mt-1">
+                              <span className="text-foreground/70">{getVoiceName(variant.usedVoiceId)}</span>
+                              {" • "}
+                              Stab: {variant.usedVoiceSettings.stability || 50}
+                              {" • "}
+                              Sim: {variant.usedVoiceSettings.similarity || 75}
+                            </div>
+                          )}
                         </div>
-                        
-                        {/* Status */}
-                        {variant.status === "processing" && (
-                          <div className="text-xs text-blue-400 animate-pulse">
-                            ⏳ Se generează...
-                          </div>
-                        )}
-                        
-                        {variant.status === "error" && (
-                          <div className="text-xs text-red-400">
-                            ❌ {variant.errorMessage || "Eroare la generare"}
-                          </div>
-                        )}
-                        
-                        {/* Setări folosite */}
-                        {variant.hasAudio && variant.status === "done" && variant.usedVoiceSettings && (
-                          <div className="text-xs text-secondary mt-1">
-                            <span className="text-foreground/70">{getVoiceName(variant.usedVoiceId)}</span>
-                            {" • "}
-                            Stab: {variant.usedVoiceSettings.stability || 50}
-                            {" • "}
-                            Sim: {variant.usedVoiceSettings.similarity || 75}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
-
-            </div>
+              {/* Buton generare - FIX în partea de jos */}
+              <div className="flex-shrink-0 p-4 border-t border-border bg-card">
+                <button
+                  className={`w-full px-4 py-3 rounded-md text-sm font-medium transition-colors ${
+                    isGenerating 
+                      ? 'bg-blue-500/50 text-white cursor-not-allowed' 
+                      : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  }`}
+                  onClick={handleGenerateAudio}
+                  disabled={isGenerating}
+                >
+                  {isGenerating ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="animate-spin">⏳</span>
+                      Se generează...
+                    </span>
+                  ) : (
+                    '🎙️ Generează 5 Variante Audio'
+                  )}
+                </button>
+              </div>
+            </>
           ) : (
-            <div className="text-sm text-secondary text-center py-8">
-              Selectează un chunk din editor pentru a vedea opțiunile audio.
+            <div className="flex-1 flex items-center justify-center px-4">
+              <div className="text-sm text-secondary text-center">
+                Selectează un chunk din editor pentru a vedea opțiunile audio.
+              </div>
             </div>
           )}
         </div>
