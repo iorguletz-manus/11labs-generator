@@ -332,26 +332,40 @@ export default function TextEditor({
       const textBefore = currentText.substring(0, cursorPosition);
       const textAfter = currentText.substring(textarea.selectionEnd);
       
-      const pastedLines = pastedText.split("\n");
+      // Split pe \n și filtrăm liniile goale, apoi facem trim pe fiecare linie
+      const pastedLines = pastedText
+        .split("\n")
+        .map(line => line.trim())  // Elimină spațiile și enter-urile de la început/sfârșit
+        .filter(line => line.length > 0);  // Elimină liniile goale
+      
+      // Dacă după filtrare nu mai avem linii, nu facem nimic
+      if (pastedLines.length === 0) return;
       
       const newChunks = [...chunks];
       
       // Primul chunk: text înainte + prima linie paste-uită
+      const firstLineText = (textBefore + pastedLines[0]).trim();
       newChunks[index] = { 
         ...newChunks[index], 
-        text: textBefore + pastedLines[0],
+        text: firstLineText,
         hasAudio: false,
       };
       
       // Chunk-uri noi pentru liniile din mijloc și ultima
-      const additionalChunks = pastedLines.slice(1).map((line, i) => ({
-        id: `temp-${Date.now()}-${i}`,
-        text: i === pastedLines.length - 2 ? line + textAfter : line,
-        order: index + 1 + i,
-        hasAudio: false,
-        isGenerating: false,
-        activeVariantId: null,
-      }));
+      const additionalChunks = pastedLines.slice(1).map((line, i) => {
+        // Ultima linie primește textul de după cursor
+        const isLastLine = i === pastedLines.length - 2;
+        const lineText = isLastLine ? (line + textAfter).trim() : line;
+        
+        return {
+          id: `temp-${Date.now()}-${i}`,
+          text: lineText,
+          order: index + 1 + i,
+          hasAudio: false,
+          isGenerating: false,
+          activeVariantId: null,
+        };
+      });
       
       newChunks.splice(index + 1, 0, ...additionalChunks);
       
