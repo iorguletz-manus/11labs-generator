@@ -26,9 +26,9 @@ interface ChunkData {
   id: string;
   text: string;
   order: number;
-  useCustomSettings: boolean;
-  customVoiceId: string | null;
-  customVoiceSettings: VoiceSettingsData | null;
+  useCustomSettings?: boolean;
+  customVoiceId?: string | null;
+  customVoiceSettings?: VoiceSettingsData | null;
 }
 
 interface VoiceSettingsProps {
@@ -141,7 +141,7 @@ export default function VoiceSettings({
   // Actualizează starea când se schimbă chunk-ul selectat
   useEffect(() => {
     if (selectedChunk) {
-      setUseCustomSettings(selectedChunk.useCustomSettings);
+      setUseCustomSettings(selectedChunk.useCustomSettings ?? false);
       setChunkVoiceId(selectedChunk.customVoiceId || projectVoiceId || "");
       setChunkSettings(selectedChunk.customVoiceSettings || projectSettings);
     } else {
