@@ -324,71 +324,6 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
     setCurrentTime(newTime);
   }, []);
 
-  // State pentru export
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
-
-  // Handler pentru export MP3
-  const handleExport = useCallback(async () => {
-    setIsExporting(true);
-    setExportError(null);
-
-    try {
-      // Verifică mai întâi dacă exportul este posibil
-      const checkResponse = await fetch(`/api/projects/${projectId}/export`);
-      const checkData = await checkResponse.json();
-
-      if (!checkData.ready) {
-        const missingList = checkData.missingChunks
-          ?.map((c: { index: number; text: string }) => `Chunk #${c.index}: "${c.text}"`)
-          .join('\n');
-        setExportError(
-          `Nu se poate exporta. ${checkData.chunksWithoutAudio} chunk-uri nu au audio:\n${missingList || ''}`
-        );
-        setIsExporting(false);
-        return;
-      }
-
-      // Descarcă fișierul
-      const response = await fetch(`/api/projects/${projectId}/export`, {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        setExportError(errorData.error || 'Eroare la export');
-        setIsExporting(false);
-        return;
-      }
-
-      // Creează blob și descarcă
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      
-      // Extrage numele fișierului din header sau folosește default
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let fileName = `${projectName.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '_')}_audiobook.mp3`;
-      if (contentDisposition) {
-        const match = contentDisposition.match(/filename="(.+)"/);
-        if (match) fileName = match[1];
-      }
-      
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-    } catch (err) {
-      console.error('Eroare la export:', err);
-      setExportError('Eroare de conexiune la server');
-    } finally {
-      setIsExporting(false);
-    }
-  }, [projectId, projectName]);
-
   // Format time
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
@@ -642,36 +577,7 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
                 </div>
               )}
 
-              {/* Separator */}
-              <div className="my-6 border-t border-border" />
 
-              {/* Export Section */}
-              <div>
-                <h3 className="text-md font-semibold mb-3">Export</h3>
-                <button
-                  className={`w-full px-4 py-2 rounded-md transition-colors text-sm font-medium mb-2 ${
-                    isExporting
-                      ? 'bg-gray-500 cursor-not-allowed'
-                      : 'bg-primary text-primary-foreground hover:bg-primary/90'
-                  }`}
-                  onClick={handleExport}
-                  disabled={isExporting}
-                >
-                  {isExporting ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="animate-spin">⏳</span>
-                      Se exportă...
-                    </span>
-                  ) : (
-                    'Export Final MP3'
-                  )}
-                </button>
-                {exportError && (
-                  <div className="text-xs text-red-400 whitespace-pre-line mt-2 p-2 bg-red-500/10 rounded">
-                    {exportError}
-                  </div>
-                )}
-              </div>
             </div>
           ) : (
             <div className="text-sm text-secondary text-center py-8">
