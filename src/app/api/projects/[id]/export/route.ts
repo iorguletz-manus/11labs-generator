@@ -3,18 +3,43 @@ import { prisma } from '@/lib/prisma';
 
 const FFMPEG_API_URL = 'https://api.ffmpeg-api.com';
 
-// Helper function to upload a file to ffmpeg-api
-async function uploadToFfmpegApi(audioBuffer: Buffer, fileName: string): Promise<string> {
+// Helper function to create a directory on ffmpeg-api
+async function createDirectory(): Promise<string> {
   const authHeader = process.env.FFMPEG_API_AUTH || `Basic ${process.env.FFMPEG_API_KEY}`;
   
-  // 1. Get upload URL
+  const response = await fetch(`${FFMPEG_API_URL}/directory`, {
+    method: 'POST',
+    headers: {
+      'Authorization': authHeader,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({}),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to create directory: ${error}`);
+  }
+
+  const data = await response.json();
+  return data.directory.dir_id;
+}
+
+// Helper function to upload a file to ffmpeg-api in a specific directory
+async function uploadToFfmpegApi(audioBuffer: Buffer, fileName: string, dirId: string): Promise<string> {
+  const authHeader = process.env.FFMPEG_API_AUTH || `Basic ${process.env.FFMPEG_API_KEY}`;
+  
+  // 1. Get upload URL with directory
   const fileResponse = await fetch(`${FFMPEG_API_URL}/file`, {
     method: 'POST',
     headers: {
       'Authorization': authHeader,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ file_name: fileName }),
+    body: JSON.stringify({ 
+      file_name: fileName,
+      dir_id: dirId,
+    }),
   });
 
   if (!fileResponse.ok) {
@@ -166,7 +191,12 @@ export async function POST(
       );
     }
 
-    // Upload all audio files to ffmpeg-api
+    // Create a directory for all audio files
+    console.log('Creating directory on ffmpeg-api...');
+    const dirId = await createDirectory();
+    console.log(`Directory created: ${dirId}`);
+
+    // Upload all audio files to ffmpeg-api in the same directory
     console.log(`Uploading ${chunksWithText.length} audio files to ffmpeg-api...`);
     const filePaths: string[] = [];
     
@@ -182,7 +212,7 @@ export async function POST(
       const audioBuffer = Buffer.from(variant.audioData);
       const fileName = `chunk_${i.toString().padStart(3, '0')}.mp3`;
       
-      const filePath = await uploadToFfmpegApi(audioBuffer, fileName);
+      const filePath = await uploadToFfmpegApi(audioBuffer, fileName, dirId);
       filePaths.push(filePath);
       console.log(`Uploaded chunk ${i + 1}/${chunksWithText.length}: ${filePath}`);
     }
