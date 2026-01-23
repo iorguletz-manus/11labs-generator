@@ -22,7 +22,7 @@ async function createDirectory(): Promise<string> {
   }
 
   const data = await response.json();
-  return data.directory.dir_id;
+  return data.directory.id;
 }
 
 // Helper function to upload a file to ffmpeg-api in a specific directory
