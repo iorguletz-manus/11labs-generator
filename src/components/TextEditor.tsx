@@ -317,6 +317,24 @@ export default function TextEditor({
     onChunkSelect?.(index);
   }, [onChunkSelect]);
 
+  // Auto-resize textarea pentru a se potrivi exact cu continutul
+  const autoResizeTextarea = useCallback((textarea: HTMLTextAreaElement) => {
+    // Reset height pentru a obtine scrollHeight corect
+    textarea.style.height = 'auto';
+    // Seteaza height la scrollHeight (continut + padding intern)
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, []);
+
+  // Effect pentru auto-resize la toate textarea-urile cand se schimba chunks
+  useEffect(() => {
+    chunks.forEach((_, index) => {
+      const textarea = document.querySelector(`[data-chunk-index="${index}"]`) as HTMLTextAreaElement;
+      if (textarea) {
+        autoResizeTextarea(textarea);
+      }
+    });
+  }, [chunks, autoResizeTextarea]);
+
   // Handler pentru paste
   const handlePaste = useCallback((e: React.ClipboardEvent, index: number) => {
     const pastedText = e.clipboardData.getData("text/plain");
@@ -484,10 +502,11 @@ export default function TextEditor({
               className={`w-full min-h-[60px] p-3 pl-4 border-l-4 resize-none bg-transparent focus:outline-none focus:ring-1 focus:ring-primary/30 rounded-r transition-all duration-300 ${getBorderClass(chunk, selectedChunkIndex === index)}`}
               style={{ 
                 borderLeftWidth: "4px",
-                height: "auto",
+                overflow: "hidden",
                 ...getPulseStyle(chunk),
               }}
-              rows={Math.max(2, Math.ceil(chunk.text.length / 80))}
+              onInput={(e) => autoResizeTextarea(e.target as HTMLTextAreaElement)}
+              ref={(el) => el && autoResizeTextarea(el)}
             />
             {/* Icon pentru setări custom */}
             {chunk.useCustomSettings && (
