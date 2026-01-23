@@ -15,7 +15,7 @@ interface GenerateSettings {
   settings: VoiceSettings;
 }
 
-const MAX_VARIANTS = 5;
+const VARIANTS_PER_BATCH = 5; // Câte variante se generează la o apăsare
 
 // Funcția getSettingsForChunk - determină setările de folosit la generare
 async function getSettingsForChunk(chunkId: string): Promise<GenerateSettings | null> {
@@ -202,12 +202,7 @@ export async function POST(
       where: { chunkId },
     });
 
-    if (existingVariants >= MAX_VARIANTS) {
-      return NextResponse.json(
-        { error: `Chunk-ul are deja ${MAX_VARIANTS} variante. Șterge una pentru a genera alta.` },
-        { status: 400 }
-      );
-    }
+    // Nu mai avem limită de variante - se pot genera câte se dorește
 
     // Obține setările pentru generare
     const generateSettings = await getSettingsForChunk(chunkId);
@@ -228,8 +223,8 @@ export async function POST(
       );
     }
 
-    // Calculează câte variante mai putem genera
-    const variantsToGenerate = Math.min(MAX_VARIANTS - existingVariants, MAX_VARIANTS);
+    // Generează întotdeauna 5 variante noi
+    const variantsToGenerate = VARIANTS_PER_BATCH;
     const startVariantNumber = existingVariants + 1;
 
     // Generează toate variantele în paralel
