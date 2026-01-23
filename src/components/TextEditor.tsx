@@ -506,7 +506,7 @@ export default function TextEditor({
                 ...getPulseStyle(chunk),
               }}
               onInput={(e) => autoResizeTextarea(e.target as HTMLTextAreaElement)}
-              ref={(el) => el && autoResizeTextarea(el)}
+              ref={(el) => { if (el) autoResizeTextarea(el); }}
             />
             {/* Icon pentru setări custom */}
             {chunk.useCustomSettings && (
