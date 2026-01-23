@@ -1,6 +1,6 @@
 # 11Labs Audiobook Generator - Progres și Decizii
 
-**Ultima actualizare:** 21 Ianuarie 2026
+**Ultima actualizare:** 23 Ianuarie 2026
 
 ---
 
@@ -12,10 +12,9 @@
 | 2 | Proiecte CRUD | ✅ Completă | 18 Ian 2026 |
 | 3 | Editor Text și Chunk-uri | ✅ Completă | 18 Ian 2026 |
 | 4 | Setări Voce (v4 - Dual) | ✅ Completă | 21 Ian 2026 |
-| 5 | Generare Audio (ElevenLabs) | ✅ Completă | 21 Ian 2026 |
-| 6 | Audio Queue și Player | ⏳ În așteptare | - |
-| 7 | Export și Concatenare | ⏳ În așteptare | - |
-| 8 | Polish și Optimizări | ⏳ În așteptare | - |
+| 5 | Generare Audio (5 variante) | ✅ Completă | 23 Ian 2026 |
+| 6 | Export Final MP3 | ✅ Completă | 23 Ian 2026 |
+| 7 | Polish și Optimizări | ⏳ În așteptare | - |
 
 ---
 
@@ -31,6 +30,7 @@
 | DB Development | SQLite local (dev.db) | Simplu, fără dependențe |
 | DB Production | Turso (libsql) | SQLite în cloud, gratuit |
 | Hosting | Vercel | Auto-deploy din GitHub |
+| Audio Concat | ffmpeg | Pentru concatenare MP3 la export |
 
 ### UI/UX
 
@@ -42,6 +42,8 @@
 | Header editor | "← Înapoi" + Nume proiect | Conform specificații v1.1 |
 | Editor text | Textarea per chunk | Simplu și robust |
 | Setări voce | Dual (Default + Custom per Chunk) | Conform specificații v4 |
+| Player audio | Footer fix | Întotdeauna vizibil în partea de jos |
+| Variante audio | 5 per chunk | Generare simultană cu selecție activă |
 
 ---
 
@@ -76,9 +78,12 @@ Environment variables setate în Vercel Dashboard:
 /api/projects/[id]   → GET, PUT (redenumire), DELETE
 /api/projects/[id]/text → GET (chunk-uri), PUT (salvare text)
 /api/projects/[id]/voice → GET, PUT (setări voce)
+/api/projects/[id]/export → GET (verificare), POST (export MP3)
 /api/chunks/[id]/settings → GET, PUT, DELETE (setări custom per chunk)
-/api/chunks/[id]/generate → GET (variante), POST (generare audio)
+/api/chunks/[id]/generate → GET (variante), POST (generare 5 variante audio)
 /api/audio/[variantId] → GET (streaming audio pentru playback)
+/api/variants/[id] → DELETE (ștergere variantă)
+/api/variants/[id]/activate → PUT (setare variantă activă)
 /api/voices          → GET (lista voci ElevenLabs)
 /api/models          → GET (lista modele ElevenLabs)
 ```
@@ -109,13 +114,25 @@ Environment variables setate în Vercel Dashboard:
 - API `/api/projects/[id]/voice` - Endpoint pentru salvare setări voce proiect
 - API `/api/chunks/[id]/settings` - Endpoint pentru setări custom per chunk
 
-### Faza 5 (Generare Audio)
+### Faza 5 (Generare Audio - 5 Variante)
 
-- API `/api/chunks/[id]/generate` - Endpoint pentru generare audio cu ElevenLabs
+- API `/api/chunks/[id]/generate` - Endpoint pentru generare 5 variante audio simultan
 - API `/api/audio/[variantId]` - Endpoint pentru streaming audio (playback)
+- API `/api/variants/[id]` - Endpoint pentru ștergere variantă
+- API `/api/variants/[id]/activate` - Endpoint pentru activare variantă
 - Funcția `getSettingsForChunk()` - Determină setările de folosit (default vs custom)
-- Player audio în Coloana 3 cu Play/Pause și progress bar
+- Player audio în footer fix cu Play/Pause și progress bar
 - Buton "Generează Toate" pentru generare în batch
+- UI lista variante cu radio buttons pentru selecție activă
+
+### Faza 6 (Export Final MP3)
+
+- API `/api/projects/[id]/export` - Endpoint pentru export MP3
+  - GET: Verifică dacă exportul este posibil
+  - POST: Concatenează variantele active și returnează fișierul MP3
+- Buton "Export Final MP3" în Coloana 3
+- Validare că toate chunk-urile au audio înainte de export
+- Concatenare cu ffmpeg
 
 ---
 
@@ -136,6 +153,8 @@ Environment variables setate în Vercel Dashboard:
 | Selectare chunk | ✅ | Click pe chunk afișează opțiuni audio în panoul drept |
 | Paste multi-linie | ✅ | Text paste-uit cu Enter-uri creează chunk-uri multiple |
 | Icon setări custom | ✅ | ⚙️ pentru chunk-uri cu useCustomSettings = true |
+| Navigare săgeți | ✅ | Săgeți sus/jos navighează între chunk-uri la început/sfârșit |
+| Ctrl+A | ✅ | Selectează toate chunk-urile |
 
 ### Indicatori Vizuali Chunk
 
@@ -188,27 +207,33 @@ Environment variables setate în Vercel Dashboard:
 
 ## Funcționalități Faza 5
 
-### Generare Audio
+### Generare Audio (5 Variante)
 
 | Funcționalitate | Status | Descriere |
 |-----------------|--------|-----------|
-| Endpoint generare | ✅ | POST /api/chunks/[id]/generate |
+| Endpoint generare | ✅ | POST /api/chunks/[id]/generate - generează 5 variante |
 | Endpoint streaming | ✅ | GET /api/audio/[variantId] |
+| Endpoint activare | ✅ | PUT /api/variants/[id]/activate |
+| Endpoint ștergere | ✅ | DELETE /api/variants/[id] |
 | getSettingsForChunk() | ✅ | Determină setările (default vs custom) |
 | Salvare snapshot | ✅ | usedVoiceId și usedVoiceSettings în AudioVariant |
 | Stocare audio | ✅ | Audio salvat ca Buffer în baza de date |
-| Indicator generare | ✅ | "Se generează audio..." cu animație |
-| Player audio | ✅ | Play/Pause și progress bar |
-| Buton regenerare | ✅ | "🔄 Regenerează Audio" |
+| Indicator generare | ✅ | "Se generează 5 variante audio..." cu animație |
+| Player audio footer | ✅ | Player fix în footer, întotdeauna vizibil |
+| Lista variante | ✅ | UI cu radio buttons pentru selecție activă |
+| Buton Play per variantă | ✅ | ▶ pentru redare în player |
+| Buton Șterge variantă | ✅ | 🗑 pentru ștergere |
 | Generează Toate | ✅ | Generare în batch pentru toate chunk-urile |
 
 ### API-uri Faza 5
 
 | Endpoint | Metodă | Descriere |
 |----------|--------|-----------|
-| `/api/chunks/[id]/generate` | POST | Generează audio pentru un chunk |
+| `/api/chunks/[id]/generate` | POST | Generează 5 variante audio pentru un chunk |
 | `/api/chunks/[id]/generate` | GET | Obține lista variantelor audio |
 | `/api/audio/[variantId]` | GET | Streaming audio MP3 pentru playback |
+| `/api/variants/[id]` | DELETE | Șterge o variantă audio |
+| `/api/variants/[id]/activate` | PUT | Setează varianta ca activă |
 
 ### Logica getSettingsForChunk()
 
@@ -221,6 +246,29 @@ Altfel:
 
 ---
 
+## Funcționalități Faza 6
+
+### Export Final MP3
+
+| Funcționalitate | Status | Descriere |
+|-----------------|--------|-----------|
+| Endpoint verificare | ✅ | GET /api/projects/[id]/export |
+| Endpoint export | ✅ | POST /api/projects/[id]/export |
+| Validare chunk-uri | ✅ | Verifică că toate au audio înainte de export |
+| Concatenare ffmpeg | ✅ | Folosește ffmpeg pentru lipirea audio-urilor |
+| Download fișier | ✅ | Returnează fișierul MP3 pentru descărcare |
+| Nume fișier | ✅ | {nume_proiect}_audiobook.mp3 |
+| Mesaj eroare | ✅ | Afișează chunk-urile fără audio |
+
+### API-uri Faza 6
+
+| Endpoint | Metodă | Descriere |
+|----------|--------|-----------|
+| `/api/projects/[id]/export` | GET | Verifică dacă exportul este posibil |
+| `/api/projects/[id]/export` | POST | Concatenează și returnează MP3 |
+
+---
+
 ## Modificări față de Specificații v1.0
 
 1. **Pagina principală:** `/` redirect la `/projects` (nu dropdown în header)
@@ -230,6 +278,7 @@ Altfel:
 5. **Editor:** Textarea per chunk (nu contentEditable) - mai robust și mai simplu
 6. **Footer statistici:** Eliminat (nu era necesar)
 7. **Setări voce (v4):** Sistem dual cu setări default + custom per chunk
+8. **Variante audio:** 5 variante per chunk cu selecție activă
 
 ---
 
@@ -243,16 +292,18 @@ Altfel:
 | Chunk-uri goale nu se salvau | Modificat API să păstreze chunk-uri goale |
 | Coloana `order` lipsă în Turso | Recreat tabelele cu structura corectă |
 | ElevenLabs models API 401 | API key nu are permisiunea models_read (funcționalitate opțională) |
+| Buton Generează Toate dispare | Mutat în afara containerului scrollabil |
+| Navigare săgeți între chunk-uri | Verificare poziție cursor la început/sfârșit text |
 
 ---
 
-## Pași Următori (Faza 6)
+## Pași Următori (Faza 7)
 
-1. Implementare queue pentru generare audio în paralel
-2. Afișare progres pentru generare multiplă
-3. Gestionare erori și retry
-4. Optimizări player audio
-5. Afișare setări folosite la generare în UI
+1. Polish UI și UX
+2. Optimizări performanță
+3. Gestionare erori îmbunătățită
+4. Posibilitate pauze între chunk-uri la export (opțional)
+5. Afișare durată totală audiobook
 
 ---
 
