@@ -179,18 +179,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
 
+    // Verifică mai întâi dacă proiectul există
     const project = await prisma.project.findUnique({
       where: { id },
-      include: {
-        chunks: {
-          orderBy: { order: "asc" },
-          include: {
-            variants: {
-              orderBy: { variantNumber: "asc" },
-            },
-          },
-        },
-      },
     });
 
     if (!project) {
@@ -200,12 +191,34 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // Încarcă chunk-urile separat pentru a optimiza query-ul
+    const chunks = await prisma.chunk.findMany({
+      where: { projectId: id },
+      orderBy: { order: "asc" },
+      select: {
+        id: true,
+        text: true,
+        order: true,
+        useCustomSettings: true,
+        customVoiceId: true,
+        customVoiceSettings: true,
+        variants: {
+          select: {
+            id: true,
+            status: true,
+            isActive: true,
+          },
+          orderBy: { variantNumber: "asc" },
+        },
+      },
+    });
+
     // Reconstruim textul complet din chunk-uri
-    const fullText = project.chunks.map((chunk) => chunk.text).join("\n");
+    const fullText = chunks.map((chunk) => chunk.text).join("\n");
 
     return NextResponse.json({
       full_text: fullText,
-      chunks: project.chunks.map((chunk) => ({
+      chunks: chunks.map((chunk) => ({
         id: chunk.id,
         text: chunk.text,
         order: chunk.order,
