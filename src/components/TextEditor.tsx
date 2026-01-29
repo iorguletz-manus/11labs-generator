@@ -158,8 +158,12 @@ export default function TextEditor({
     }
     
     setChunks(newChunks);
+    
+    // Notificăm INSTANT ProjectEditor despre modificări (pentru ștergerea generărilor)
+    onChunksUpdate?.(newChunks);
+    
     triggerAutosave(newChunks);
-  }, [chunks, triggerAutosave]);
+  }, [chunks, triggerAutosave, onChunksUpdate]);
 
   // Funcție pentru a verifica dacă cursorul este pe primul rând LOGIC (bazat pe \n)
   // Aceasta verifică dacă nu există niciun \n înainte de cursor
