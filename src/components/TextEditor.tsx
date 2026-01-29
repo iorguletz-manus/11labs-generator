@@ -103,6 +103,9 @@ export default function TextEditor({
       // Doar actualizăm metadata (hasAudio, activeVariantId, etc.) dacă e necesar
       // dar PĂSTRĂM textul curent din editor
       
+      // Notificăm ProjectEditor despre modificările făcute
+      onChunksUpdate?.(chunksToSave);
+      
       setLastSavedText(text);
       setSaveStatus("saved");
       
@@ -122,7 +125,7 @@ export default function TextEditor({
       isSavingRef.current = false;
       pendingChunksRef.current = null;
     }
-  }, [projectId, lastSavedText]);
+  }, [projectId, lastSavedText, onChunksUpdate]);
 
   // Trigger autosave
   const triggerAutosave = useCallback((newChunks: ChunkData[]) => {
@@ -140,7 +143,20 @@ export default function TextEditor({
   // Handler pentru modificarea textului unui chunk
   const handleChunkChange = useCallback((index: number, newText: string) => {
     const newChunks = [...chunks];
-    newChunks[index] = { ...newChunks[index], text: newText };
+    const oldText = newChunks[index].text;
+    
+    // Dacă textul s-a schimbat, resetăm hasAudio și activeVariantId
+    if (oldText !== newText) {
+      newChunks[index] = { 
+        ...newChunks[index], 
+        text: newText,
+        hasAudio: false,
+        activeVariantId: null
+      };
+    } else {
+      newChunks[index] = { ...newChunks[index], text: newText };
+    }
+    
     setChunks(newChunks);
     triggerAutosave(newChunks);
   }, [chunks, triggerAutosave]);
