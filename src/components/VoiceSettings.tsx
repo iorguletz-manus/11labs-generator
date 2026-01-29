@@ -409,6 +409,22 @@ export default function VoiceSettings({
                   className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                 />
               </div>
+
+              {/* Speaker Boost */}
+              <div className="space-y-1">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={projectSettings.speakerBoost}
+                    onChange={(e) => handleProjectSettingChange("speakerBoost", e.target.checked)}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Speaker Boost</span>
+                </label>
+                <p className="text-xs text-gray-500 ml-6">
+                  Îmbunătățește claritatea și consistența vocii
+                </p>
+              </div>
             </div>
 
             {/* Info text */}
@@ -561,6 +577,22 @@ export default function VoiceSettings({
                     onChange={(e) => handleChunkSettingChange("speed", parseInt(e.target.value) / 100)}
                     className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                   />
+                </div>
+
+                {/* Speaker Boost */}
+                <div className="space-y-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={chunkSettings.speakerBoost}
+                      onChange={(e) => handleChunkSettingChange("speakerBoost", e.target.checked)}
+                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Speaker Boost</span>
+                  </label>
+                  <p className="text-xs text-gray-500 ml-6">
+                    Îmbunătățește claritatea și consistența vocii
+                  </p>
                 </div>
               </div>
             </div>
