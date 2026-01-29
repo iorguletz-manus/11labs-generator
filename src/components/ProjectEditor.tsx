@@ -163,12 +163,12 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
   useEffect(() => {
     if (selectedChunkIndex !== null && chunks[selectedChunkIndex]) {
       const selectedChunk = chunks[selectedChunkIndex];
-      // Dacă chunk-ul nu are audio dar avem variante încărcate, golește lista
-      if (!selectedChunk.hasAudio && audioVariants.length > 0) {
+      // Dacă chunk-ul nu are audio, golește lista de variante
+      if (!selectedChunk.hasAudio) {
         setAudioVariants([]);
       }
     }
-  }, [chunks, selectedChunkIndex, audioVariants.length]);
+  }, [chunks, selectedChunkIndex]);
 
   // Generează audio pentru chunk-ul selectat
   const handleGenerateAudio = useCallback(async () => {
