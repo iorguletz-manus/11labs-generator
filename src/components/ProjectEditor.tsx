@@ -422,7 +422,7 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
             <TextEditor
               projectId={projectId}
               initialChunks={chunks}
-              onChunkSelect={handleChunkSelect}
+              onChunkSelect={setSelectedChunkIndex}
               onChunksUpdate={handleChunksUpdate}
               selectedChunkIndex={selectedChunkIndex}
             />
