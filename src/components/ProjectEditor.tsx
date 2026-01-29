@@ -129,46 +129,44 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
   useEffect(() => {
     loadChunks();
   }, [loadChunks]);
-
-  // Handler pentru selecția chunk-ului
-  const handleChunkSelect = useCallback((index: number | null) => {
-    setSelectedChunkIndex(index);
+  // Încărcă și selectează chunk-ul când selectedChunkIndex se schimbă
+  useEffect(() => {
+    setSelectedChunk(selectedChunkIndex);
     setAudioError(null);
     
-    // Încarcă variantele audio pentru chunk-ul selectat
+    // Încarcă variantele audio DOAR dacă chunk-ul are audio
     if (index !== null && chunks[index]) {
-      const loadVariants = async () => {
-        try {
-          const response = await fetch(`/api/chunks/${chunks[index].id}/generate`);
-          if (response.ok) {
-            const data = await response.json();
-            setAudioVariants(data.variants || []);
+      const selectedChunk = chunks[index];
+      
+      if (selectedChunk.hasAudio) {
+        // Chunk-ul are audio → încarcă variantele de pe server
+        const loadVariants = async () => {
+          try {
+            const response = await fetch(`/api/chunks/${selectedChunk.id}/generate`);
+            if (response.ok) {
+              const data = await response.json();
+              setAudioVariants(data.variants || []);
+            }
+          } catch (err) {
+            console.error("Eroare la încărcarea variantelor:", err);
           }
-        } catch (err) {
-          console.error("Eroare la încărcarea variantelor:", err);
-        }
-      };
-      loadVariants();
+        };
+        loadVariants();
+      } else {
+        // Chunk-ul NU are audio → golește lista
+        setAudioVariants([]);
+      }
     } else {
       setAudioVariants([]);
     }
-  }, [chunks]);
+  }, [selectedChunkIndex]);
 
   // Handler pentru actualizarea chunk-urilor din TextEditor
   const handleChunksUpdate = useCallback((updatedChunks: ChunkData[]) => {
     setChunks(updatedChunks);
   }, []);
 
-  // Golește automat audioVariants când chunk-ul selectat nu mai are audio
-  useEffect(() => {
-    if (selectedChunkIndex !== null && chunks[selectedChunkIndex]) {
-      const selectedChunk = chunks[selectedChunkIndex];
-      // Dacă chunk-ul nu are audio, golește lista de variante
-      if (!selectedChunk.hasAudio) {
-        setAudioVariants([]);
-      }
-    }
-  }, [chunks, selectedChunkIndex]);
+
 
   // Generează audio pentru chunk-ul selectat
   const handleGenerateAudio = useCallback(async () => {
