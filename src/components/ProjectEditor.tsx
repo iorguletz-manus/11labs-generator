@@ -159,6 +159,17 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
     setChunks(updatedChunks);
   }, []);
 
+  // Golește automat audioVariants când chunk-ul selectat nu mai are audio
+  useEffect(() => {
+    if (selectedChunkIndex !== null && chunks[selectedChunkIndex]) {
+      const selectedChunk = chunks[selectedChunkIndex];
+      // Dacă chunk-ul nu are audio dar avem variante încărcate, golește lista
+      if (!selectedChunk.hasAudio && audioVariants.length > 0) {
+        setAudioVariants([]);
+      }
+    }
+  }, [chunks, selectedChunkIndex, audioVariants.length]);
+
   // Generează audio pentru chunk-ul selectat
   const handleGenerateAudio = useCallback(async () => {
     if (selectedChunkIndex === null || !chunks[selectedChunkIndex]) return;
@@ -242,22 +253,29 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
 
   // Activează o variantă
   const handleActivateVariant = useCallback(async (variantId: string) => {
+    // OPTIMISTIC UPDATE - Actualizăm UI-ul INSTANT
+    const previousVariants = audioVariants;
+    setAudioVariants(prev => prev.map(v => ({
+      ...v,
+      isActive: v.id === variantId
+    })));
+
     try {
       const response = await fetch(`/api/variants/${variantId}/activate`, {
         method: "PUT",
       });
 
-      if (response.ok) {
-        // Actualizează local variantele
-        setAudioVariants(prev => prev.map(v => ({
-          ...v,
-          isActive: v.id === variantId
-        })));
+      if (!response.ok) {
+        // Request eșuat - revertăm la starea anterioară
+        setAudioVariants(previousVariants);
+        console.error("Eroare la activarea variantei");
       }
     } catch (err) {
+      // Eroare de conexiune - revertăm
+      setAudioVariants(previousVariants);
       console.error("Eroare la activarea variantei:", err);
     }
-  }, []);
+  }, [audioVariants]);
 
   // Șterge o variantă
   const handleDeleteVariant = useCallback(async (variantId: string, e: React.MouseEvent) => {
