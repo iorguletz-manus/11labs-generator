@@ -49,6 +49,8 @@ export default function TextEditor({
   const [lastSavedText, setLastSavedText] = useState<string>("");
   const autosaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
+  const isSavingRef = useRef<boolean>(false);
+  const pendingChunksRef = useRef<ChunkData[] | null>(null);
 
   // Calculează chunk-uri peste limită
   const chunksOverLimit = chunks.filter((chunk) => chunk.text.length > MAX_CHUNK_LENGTH);
@@ -75,6 +77,13 @@ export default function TextEditor({
       return;
     }
 
+    // Dacă se salvează deja, marcăm că avem modificări în așteptare
+    if (isSavingRef.current) {
+      pendingChunksRef.current = chunksToSave;
+      return;
+    }
+
+    isSavingRef.current = true;
     setSaveStatus("saving");
 
     try {
@@ -90,18 +99,30 @@ export default function TextEditor({
 
       const data = await response.json();
       
-      // Actualizăm chunk-urile cu datele din server
-      if (data.chunks && data.chunks.length > 0) {
-        setChunks(data.chunks);
-        onChunksUpdate?.(data.chunks);
-      }
+      // NU mai actualizăm chunk-urile din server pentru a evita suprascrierea
+      // Doar actualizăm metadata (hasAudio, activeVariantId, etc.) dacă e necesar
+      // dar PĂSTRĂM textul curent din editor
+      
       setLastSavedText(text);
       setSaveStatus("saved");
+      
+      // Dacă avem modificări în așteptare, salvăm din nou
+      if (pendingChunksRef.current) {
+        const pending = pendingChunksRef.current;
+        pendingChunksRef.current = null;
+        isSavingRef.current = false;
+        // Trigger save pentru modificările în așteptare
+        setTimeout(() => saveText(pending), 100);
+      } else {
+        isSavingRef.current = false;
+      }
     } catch (error) {
       console.error("Eroare la salvare:", error);
       setSaveStatus("unsaved");
+      isSavingRef.current = false;
+      pendingChunksRef.current = null;
     }
-  }, [projectId, lastSavedText, onChunksUpdate]);
+  }, [projectId, lastSavedText]);
 
   // Trigger autosave
   const triggerAutosave = useCallback((newChunks: ChunkData[]) => {
