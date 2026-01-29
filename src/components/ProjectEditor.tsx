@@ -133,9 +133,9 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
   useEffect(() => {
     setAudioError(null);
     
-    // Încarcă variantele audio DOAR dacă chunk-ul are audio
-    if (index !== null && chunks[index]) {
-      const selectedChunk = chunks[index];
+     // Încarcă variantele audio DOAR dacă chunk-ul are audio
+    if (selectedChunkIndex !== null && chunks[selectedChunkIndex]) {
+      const selectedChunk = chunks[selectedChunkIndex];
       
       if (selectedChunk.hasAudio) {
         // Chunk-ul are audio → încarcă variantele de pe server
