@@ -403,7 +403,7 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
         {/* Coloana 2 - Text Editor (flex-1) */}
         <div className="flex-1 h-full flex flex-col overflow-hidden">
           {/* TextEditor cu scroll propriu */}
-          <div className="flex-1 min-h-0 overflow-hidden">
+          <div className="flex-1 min-h-0">
             <TextEditor
               projectId={projectId}
               initialChunks={chunks}

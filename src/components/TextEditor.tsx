@@ -517,7 +517,7 @@ export default function TextEditor({
       {/* Editor Area */}
       <div 
         ref={editorRef}
-        className="flex-1 p-4 overflow-y-auto bg-background"
+        className="flex-1 p-4 pb-8 overflow-y-auto bg-background"
         onClick={handleEditorClick}
       >
         {chunks.map((chunk, index) => (
