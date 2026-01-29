@@ -107,7 +107,7 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
         activeVariantId: chunk.activeVariantId,
         useCustomSettings: chunk.useCustomSettings || false,
         customVoiceId: chunk.customVoiceId || null,
-        customVoiceSettings: chunk.customVoiceSettings ? JSON.parse(chunk.customVoiceSettings) : null,
+        customVoiceSettings: chunk.customVoiceSettings ? (typeof chunk.customVoiceSettings === 'string' ? JSON.parse(chunk.customVoiceSettings) : chunk.customVoiceSettings) : null,
       }));
       
       setChunks(loadedChunks.length > 0 ? loadedChunks : [{
