@@ -129,9 +129,8 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
   useEffect(() => {
     loadChunks();
   }, [loadChunks]);
-  // Încărcă și selectează chunk-ul când selectedChunkIndex se schimbă
+  // Încărcă variantele audio când selectedChunkIndex se schimbă
   useEffect(() => {
-    setSelectedChunk(selectedChunkIndex);
     setAudioError(null);
     
     // Încarcă variantele audio DOAR dacă chunk-ul are audio
