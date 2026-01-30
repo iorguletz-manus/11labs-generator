@@ -200,8 +200,10 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
         setAudioVariants(variantsData.variants || []);
       }
 
-      // Reîncarcă chunk-urile pentru a actualiza statusul hasAudio
-      await loadChunks();
+      // Actualizează hasAudio local fără să reîncarce de pe server (evită race condition)
+      setChunks(prevChunks => prevChunks.map((c, idx) => 
+        idx === selectedChunkIndex ? { ...c, hasAudio: true } : c
+      ));
 
     } catch (err) {
       console.error("Eroare la generare:", err);
@@ -209,7 +211,7 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
     } finally {
       setIsGenerating(false);
     }
-  }, [selectedChunkIndex, chunks, loadChunks]);
+  }, [selectedChunkIndex, chunks]);
 
   // Generează audio pentru toate chunk-urile fără audio
   const handleGenerateAll = useCallback(async () => {
@@ -233,8 +235,11 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
       }
     }
 
-    // Reîncarcă toate chunk-urile
-    await loadChunks();
+    // Actualizează hasAudio local pentru chunk-urile generate (evită race condition)
+    const generatedIds = new Set(chunksWithoutAudio.map(c => c.id));
+    setChunks(prevChunks => prevChunks.map(c => 
+      generatedIds.has(c.id) ? { ...c, hasAudio: true } : c
+    ));
     
     // Reîncarcă variantele pentru chunk-ul selectat
     if (selectedChunkIndex !== null && chunks[selectedChunkIndex]) {
@@ -246,7 +251,7 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
     }
 
     setGeneratingAll(false);
-  }, [chunks, loadChunks, selectedChunkIndex]);
+  }, [chunks, selectedChunkIndex]);
 
   // Activează o variantă
   const handleActivateVariant = useCallback(async (variantId: string) => {
@@ -287,6 +292,7 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
 
       if (response.ok) {
         // Actualizează local variantele - elimină varianta ștearsă
+        const remainingVariants = audioVariants.filter(v => v.id !== variantId);
         setAudioVariants(prev => {
           const filtered = prev.filter(v => v.id !== variantId);
           // Dacă varianta ștearsă era activă și mai există alte variante, activează prima
@@ -304,13 +310,17 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
           setCurrentChunkForPlayer(null);
         }
         
-        // Reîncarcă chunk-urile pentru a actualiza statusul hasAudio
-        await loadChunks();
+        // Dacă nu mai există variante, actualizează hasAudio local (evită race condition)
+        if (remainingVariants.length === 0 && selectedChunkIndex !== null) {
+          setChunks(prevChunks => prevChunks.map((c, idx) => 
+            idx === selectedChunkIndex ? { ...c, hasAudio: false } : c
+          ));
+        }
       }
     } catch (err) {
       console.error("Eroare la ștergerea variantei:", err);
     }
-  }, [currentAudioVariantId, loadChunks]);
+  }, [currentAudioVariantId, audioVariants, selectedChunkIndex]);
 
   // Play audio pentru un chunk specific
   const handlePlayChunk = useCallback((chunk: ChunkData, variantId: string) => {
