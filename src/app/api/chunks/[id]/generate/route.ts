@@ -178,6 +178,14 @@ export async function POST(
   try {
     const { id: chunkId } = await params;
 
+    // Citește body-ul pentru a obține textul actual (opțional)
+    let requestBody: { text?: string } = {};
+    try {
+      requestBody = await request.json();
+    } catch {
+      // Body gol sau invalid - vom folosi textul din DB
+    }
+
     // Verifică dacă chunk-ul există
     const chunk = await prisma.chunk.findUnique({
       where: { id: chunkId },
@@ -190,19 +198,22 @@ export async function POST(
       );
     }
 
-    if (!chunk.text || chunk.text.trim() === "") {
+    // Folosește textul din request body dacă există, altfel din DB
+    const textToGenerate = requestBody.text || chunk.text;
+
+    if (!textToGenerate || textToGenerate.trim() === "") {
       return NextResponse.json(
         { error: "Chunk-ul nu are text" },
         { status: 400 }
       );
     }
 
-    // Verifică dacă există deja variante
-    const existingVariants = await prisma.audioVariant.count({
+    // ȘTERGE toate variantele vechi înainte de a genera noi
+    await prisma.audioVariant.deleteMany({
       where: { chunkId },
     });
 
-    // Nu mai avem limită de variante - se pot genera câte se dorește
+    console.log(`[Generate] Șterse variante vechi pentru chunk ${chunkId}`);
 
     // Obține setările pentru generare
     const generateSettings = await getSettingsForChunk(chunkId);
@@ -223,9 +234,9 @@ export async function POST(
       );
     }
 
-    // Generează întotdeauna 5 variante noi
+    // Generează întotdeauna 5 variante noi (începând de la 1)
     const variantsToGenerate = VARIANTS_PER_BATCH;
-    const startVariantNumber = existingVariants + 1;
+    const startVariantNumber = 1;
 
     // Generează toate variantele în paralel
     const generationPromises = [];
@@ -233,7 +244,7 @@ export async function POST(
       const variantNumber = startVariantNumber + i;
       generationPromises.push(
         generateSingleVariant(
-          { id: chunkId, text: chunk.text },
+          { id: chunkId, text: textToGenerate },
           variantNumber,
           generateSettings,
           ELEVENLABS_API_KEY

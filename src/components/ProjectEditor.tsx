@@ -183,6 +183,8 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
     try {
       const response = await fetch(`/api/chunks/${chunk.id}/generate`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: chunk.text }),
       });
 
       const data = await response.json();
@@ -224,6 +226,8 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
       try {
         const response = await fetch(`/api/chunks/${chunk.id}/generate`, {
           method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: chunk.text }),
         });
 
         if (!response.ok) {
