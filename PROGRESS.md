@@ -1,6 +1,6 @@
 # 11Labs Audiobook Generator - Progres și Decizii
 
-**Ultima actualizare:** 23 Ianuarie 2026
+**Ultima actualizare:** 30 Ianuarie 2026
 
 ---
 
@@ -15,6 +15,7 @@
 | 5 | Generare Audio (5 variante) | ✅ Completă | 23 Ian 2026 |
 | 6 | Export Final MP3 | ✅ Completă | 23 Ian 2026 |
 | 7 | Polish și Optimizări | ⏳ În așteptare | - |
+| 8 | Bug Fixes și Documentație | ✅ Completă | 30 Ian 2026 |
 
 ---
 
@@ -282,6 +283,75 @@ Altfel:
 
 ---
 
+## Sesiuni Recente
+
+### Sesiunea 30 Ianuarie 2026 - Bug Fixes Critice
+
+#### 🐛 Bug Fixes
+
+1. **Fix autosave cu chunksRef** (Commit: `33765ef`)
+   - **Problemă:** Când utilizatorul modifica text și dădea click în afară rapid, modificările se pierdeau
+   - **Cauză:** Handler-ul `onBlur` folosea `chunks` din closure (valoarea veche)
+   - **Soluție:** 
+     - Adăugat `chunksRef: React.MutableRefObject<Chunk[]>` pentru a păstra întotdeauna chunk-urile actuale
+     - Adăugat `useEffect` pentru sincronizarea `chunksRef.current` cu `chunks`
+     - Modificat `onBlur` să folosească `chunksRef.current` în loc de `chunks` din closure
+   - **Impact:** ✅ Salvarea la blur funcționează corect, nu se mai pierd modificări
+
+2. **Fix race condition între salvare și reîncărcare** (Commit: `1ac2a34`)
+   - **Problemă:** După generare audio, textul din editor revenia la forma veche
+   - **Cauză:** `handleGenerateAudio` apela `loadChunks()` care reîncărca chunk-urile de pe server, suprascriind textul din editor
+   - **Soluție:**
+     - Eliminat `await loadChunks()` din `handleGenerateAudio`, `handleGenerateAll`, `handleDeleteVariant`
+     - Actualizare locală a proprietății `hasAudio` în state: `setChunks(prevChunks => ...)`
+     - Previne race condition între salvare și reîncărcare
+   - **Impact:** ✅ Textul rămâne în editor după generare, nu se mai suprascrie
+
+3. **Fix generare cu text vechi** (Commit: `19047cd`)
+   - **Problemă:** 
+     - Generările se făceau cu textul VECHI din DB, nu cu textul nou din editor
+     - Variantele vechi apăreau împreună cu cele noi
+   - **Cauză:**
+     - API-ul citea `chunk.text` din DB (linia 236)
+     - API-ul nu ștergea variantele vechi, doar adăuga 5 noi peste ele
+   - **Soluție:**
+     - **API:** Primește textul în request body: `{ text?: string }`
+     - **API:** Folosește `textToGenerate = requestBody.text || chunk.text`
+     - **API:** Șterge toate variantele vechi: `await prisma.audioVariant.deleteMany({ where: { chunkId } })`
+     - **API:** Generează de la `variantNumber = 1` (nu mai adaugă peste cele vechi)
+     - **Frontend:** `handleGenerateAudio` trimite `body: JSON.stringify({ text: chunk.text })`
+     - **Frontend:** `handleGenerateAll` trimite textul pentru fiecare chunk
+   - **Impact:** ✅ Generările se fac cu textul NOU, variantele vechi se șterg automat
+
+#### 📚 Documentație Creată
+
+1. **TECHNICAL_PRD.md** (Commit: `786d946`)
+   - PRD tehnic complet cu 837 linii
+   - Arhitectură completă cu diagrame
+   - Schema DB cu relații și indexuri
+   - Toate API routes documentate (13 endpoints)
+   - Componente React cu state și actions (8 componente)
+   - Fluxuri principale cu diagrame secvență
+   - Integrări externe (ElevenLabs, FFmpeg)
+   - Environment variables și deployment
+   - Decizii de design cu justificări
+
+2. **TESTING_RESULTS.md** (Commit: `786d946`)
+   - Environment setup validat cu chei reale de pe Vercel
+   - API ElevenLabs Voices funcționează (200 OK)
+   - API ElevenLabs Models - limitare permisiune identificată (401)
+   - Performanță API măsurată
+   - Recomandări pentru îmbunătățiri
+
+#### ⚙️ Infrastructure
+
+- **Environment Setup Local**
+  - Extras toate cheile de pe Vercel Dashboard
+  - Configurat `.env` local cu: `ELEVENLABS_API_KEY`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `DATABASE_URL`
+  - Testat local cu chei reale
+
+---
+
 ## Probleme Rezolvate
 
 | Problemă | Soluție |
@@ -294,16 +364,45 @@ Altfel:
 | ElevenLabs models API 401 | API key nu are permisiunea models_read (funcționalitate opțională) |
 | Buton Generează Toate dispare | Mutat în afara containerului scrollabil |
 | Navigare săgeți între chunk-uri | Verificare poziție cursor la început/sfârșit text |
+| Text revine la forma veche după generare | Eliminat loadChunks() după operații, update local hasAudio |
+| Generări cu text vechi | API primește text în body, șterge variante vechi |
+| Pierdere modificări la blur rapid | Folosit chunksRef în loc de chunks din closure |
+
+---
+
+## Issues Cunoscute
+
+### ⚠️ Issue #1: ElevenLabs Models API - Permisiune lipsă
+- **Descriere:** Cheia API nu are permisiunea `models_read`
+- **Error:** `401 - The API key you used is missing the permission models_read`
+- **Impact:** Minor - aplicația folosește modelul default `eleven_multilingual_v2`
+- **Workaround:** Utilizatorii nu pot selecta alte modele în UI
+- **Soluție:** 
+  1. Solicită permisiune de la ElevenLabs (user action)
+  2. SAU implementează fallback cu listă hardcoded de modele (dev action)
+- **Priority:** Medium
 
 ---
 
 ## Pași Următori (Faza 7)
 
-1. Polish UI și UX
-2. Optimizări performanță
-3. Gestionare erori îmbunătățită
-4. Posibilitate pauze între chunk-uri la export (opțional)
-5. Afișare durată totală audiobook
+### High Priority
+- [ ] Testare completă generare audio pe live cu API ElevenLabs
+- [ ] Verificare export MP3 final cu FFmpeg
+- [ ] Verificare export ZIP
+
+### Medium Priority
+- [ ] Fallback pentru models API (listă hardcoded dacă 401)
+- [ ] Error handling îmbunătățit pentru permisiuni lipsă
+- [ ] Caching pentru voices (reduce latență de la 2.6s)
+- [ ] Optimizare autosave debounce
+
+### Low Priority
+- [ ] Polish UI și UX (loading states, animations)
+- [ ] Optimizări performanță API routes
+- [ ] Keyboard shortcuts (Ctrl+G pentru generare)
+- [ ] Posibilitate pauze între chunk-uri la export
+- [ ] Afișare durată totală audiobook
 
 ---
 
@@ -311,16 +410,43 @@ Altfel:
 
 - `Document Final de Specificații pentru Manus v4.md` - Specificații complete (versiunea curentă)
 - `Workflow Deployment și Migrări.md` - Ghid deployment și backup
+- `TECHNICAL_PRD.md` - PRD tehnic complet cu arhitectură și fluxuri (NOU - 30 Ian 2026)
+- `TESTING_RESULTS.md` - Rezultate testare și recomandări (NOU - 30 Ian 2026)
 
 ---
 
-## Note pentru Chat Nou
+## 🚀 Setup pentru Sesiune Nouă
 
 La începutul unui chat nou în acest proiect:
-1. Clonează repository-ul: `gh repo clone iorguletz-manus/11labs-generator`
-2. Citește acest fișier `PROGRESS.md` pentru context
-3. Citește specificațiile din Manus Files pentru detalii
-4. Continuă de la faza curentă (marcată cu ⏳)
+
+```
+📋 SETUP SESIUNE NOUĂ - 11Labs Audiobook Generator
+
+1. Clonează repository-ul: iorguletz-manus/11labs-generator
+2. Citește TECHNICAL_PRD.md pentru context complet
+3. Citește PROGRESS.md pentru status curent
+4. Configurează .env local cu chei de pe Vercel (dacă e nevoie de testare)
+5. Instalează dependențe și pornește dev server (dacă e nevoie)
+
+Apoiștept task.
+```
+
+**Sau scurt:** "Setup 11Labs Generator și citește PRD + PROGRESS, apoi aștept task."
+
+### Workflow Actualizare PROGRESS.md
+
+**✅ Actualizez când:**
+- Rezolv un bug important
+- Finalizez o funcționalitate nouă
+- Fac un fix major
+- Deploy pe production
+- Identificăm un issue nou important
+
+**❌ NU actualizez pentru:**
+- Modificări minore de styling
+- Refactoring simplu
+- Debugging în progres
+- Discuții fără rezultat concret
 
 ---
 
