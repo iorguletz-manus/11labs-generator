@@ -34,7 +34,7 @@ interface TextEditorProps {
 
 // Constante
 const MAX_CHUNK_LENGTH = 5000;
-const AUTOSAVE_DELAY = 2000; // 2 secunde
+const AUTOSAVE_DELAY = 10000; // 10 secunde (backup pentru AFK)
 
 export default function TextEditor({
   projectId,
@@ -51,9 +51,15 @@ export default function TextEditor({
   const editorRef = useRef<HTMLDivElement>(null);
   const isSavingRef = useRef<boolean>(false);
   const pendingChunksRef = useRef<ChunkData[] | null>(null);
+  const chunksRef = useRef<ChunkData[]>(initialChunks); // Ref pentru a avea întotdeauna chunk-urile actuale
 
   // Calculează chunk-uri peste limită
   const chunksOverLimit = chunks.filter((chunk) => chunk.text.length > MAX_CHUNK_LENGTH);
+
+  // Actualizează chunksRef când se schimbă chunks
+  useEffect(() => {
+    chunksRef.current = chunks;
+  }, [chunks]);
 
   // Inițializează textul din chunk-uri
   useEffect(() => {
@@ -539,6 +545,15 @@ export default function TextEditor({
                 handleChunkClick(index);
               }}
               onPaste={(e) => handlePaste(e, index)}
+              onBlur={() => {
+                // Salvare instant când ieși din textarea (blur)
+                if (autosaveTimeoutRef.current) {
+                  clearTimeout(autosaveTimeoutRef.current);
+                  autosaveTimeoutRef.current = null;
+                }
+                // Folosim chunksRef.current pentru a avea întotdeauna chunk-urile actuale
+                saveText(chunksRef.current);
+              }}
               placeholder={index === 0 ? "Scrie sau lipește textul aici..." : ""}
               className={`w-full min-h-[60px] p-3 pl-4 border-l-4 resize-none bg-transparent focus:outline-none focus:ring-1 focus:ring-primary/30 rounded-r transition-all duration-300 ${getBorderClass(chunk, selectedChunkIndex === index)}`}
               style={{ 

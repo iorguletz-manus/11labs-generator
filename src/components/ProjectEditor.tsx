@@ -496,8 +496,8 @@ export default function ProjectEditor({ projectId, projectName }: ProjectEditorP
                   </div>
                 )}
 
-                {/* Lista variantelor */}
-                {audioVariants.length > 0 && (
+                {/* Lista variantelor - ascunsă dacă chunk-ul nu are audio (text modificat) */}
+                {audioVariants.length > 0 && selectedChunk.hasAudio && (
                   <div className="space-y-2">
                     <div className="flex justify-between items-center mb-2">
                       <h4 className="text-sm font-medium">
