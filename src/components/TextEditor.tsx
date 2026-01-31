@@ -105,12 +105,30 @@ export default function TextEditor({
 
       const data = await response.json();
       
-      // NU mai actualizăm chunk-urile din server pentru a evita suprascrierea
-      // Doar actualizăm metadata (hasAudio, activeVariantId, etc.) dacă e necesar
-      // dar PĂSTRĂM textul curent din editor
+      // Actualizăm chunk-urile cu ID-urile reale de la server
+      // DAR păstrăm textul curent din editor (pentru a evita race conditions)
+      const updatedChunks = data.chunks.map((serverChunk: any) => {
+        // Găsim chunk-ul corespunzător din editor (după order)
+        const localChunk = chunksToSave.find((c: ChunkData) => c.order === serverChunk.order);
+        
+        return {
+          id: serverChunk.id,  // ID REAL din DB
+          text: localChunk?.text || serverChunk.text,  // Păstrăm textul local
+          order: serverChunk.order,
+          hasAudio: serverChunk.hasAudio,
+          isGenerating: serverChunk.isGenerating,
+          activeVariantId: serverChunk.activeVariantId,
+          useCustomSettings: serverChunk.useCustomSettings,
+          customVoiceId: serverChunk.customVoiceId,
+          customVoiceSettings: serverChunk.customVoiceSettings,
+        };
+      });
+      
+      // Actualizăm state-ul cu chunk-urile care au ID-uri reale
+      setChunks(updatedChunks);
       
       // Notificăm ProjectEditor despre modificările făcute
-      onChunksUpdate?.(chunksToSave);
+      onChunksUpdate?.(updatedChunks);
       
       setLastSavedText(text);
       setSaveStatus("saved");
