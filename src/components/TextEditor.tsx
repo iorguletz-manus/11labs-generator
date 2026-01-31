@@ -294,7 +294,7 @@ export default function TextEditor({
       });
       
       setChunks(newChunks);
-      triggerAutosave(newChunks);
+      // NU salvăm la Enter - salvarea se face la onBlur
       
       // Focus pe noul chunk
       setTimeout(() => {
