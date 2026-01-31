@@ -1,6 +1,6 @@
 # 11Labs Audiobook Generator - Progres și Decizii
 
-**Ultima actualizare:** 30 Ianuarie 2026
+**Ultima actualizare:** 31 Ianuarie 2026
 
 ---
 
@@ -16,6 +16,7 @@
 | 6 | Export Final MP3 | ✅ Completă | 23 Ian 2026 |
 | 7 | Polish și Optimizări | ⏳ În așteptare | - |
 | 8 | Bug Fixes și Documentație | ✅ Completă | 30 Ian 2026 |
+| 9 | Fix Salvare Chunk-uri Noi | ✅ Completă | 31 Ian 2026 |
 
 ---
 
@@ -284,6 +285,71 @@ Altfel:
 ---
 
 ## Sesiuni Recente
+
+### Sesiunea 31 Ianuarie 2026 - Fix Salvare Chunk-uri Noi
+
+#### 🐛 Bug Fix CRITIC
+
+1. **Fix salvare chunk-uri noi cu ID-uri reale** (Commit: `2cbc1a3`)
+   - **Problemă:** 
+     - Chunk-urile noi create cu Enter nu erau salvate efectiv în DB
+     - Frontend-ul afișa "Salvat ✓" dar la refresh chunk-urile noi dispăreau
+     - Eroare "Chunk-ul nu a fost găsit" la încercarea de generare audio pentru chunk-uri noi
+   - **Cauză:**
+     - Frontend-ul crea chunk-uri cu ID-uri temporare: `temp-${Date.now()}`
+     - API-ul returna chunk-urile cu ID-uri reale generate de DB
+     - Frontend-ul **IGNORA** răspunsul de la server și păstra chunk-urile cu ID-uri temporare
+     - Comentariu în cod: "NU mai actualizăm chunk-urile din server pentru a evita suprascrierea"
+   - **Soluție:**
+     - Modificat funcția `saveText()` în `TextEditor.tsx` (liniile 108-131)
+     - După salvare, mapăm chunk-urile de la server cu ID-uri reale
+     - Păstrăm textul curent din editor (pentru a evita race conditions)
+     - Actualizăm state-ul cu chunk-urile care au ID-uri reale
+     - Notificăm ProjectEditor cu chunk-urile actualizate
+   - **Cod:**
+     ```typescript
+     const updatedChunks = data.chunks.map((serverChunk: any) => {
+       const localChunk = chunksToSave.find((c: ChunkData) => c.order === serverChunk.order);
+       return {
+         id: serverChunk.id,  // ID REAL din DB
+         text: localChunk?.text || serverChunk.text,  // Păstrăm textul local
+         order: serverChunk.order,
+         hasAudio: serverChunk.hasAudio,
+         isGenerating: serverChunk.isGenerating,
+         activeVariantId: serverChunk.activeVariantId,
+         useCustomSettings: serverChunk.useCustomSettings,
+         customVoiceId: serverChunk.customVoiceId,
+         customVoiceSettings: serverChunk.customVoiceSettings,
+       };
+     });
+     setChunks(updatedChunks);
+     onChunksUpdate?.(updatedChunks);
+     ```
+   - **Testare:**
+     - ✅ Creat chunk nou cu Enter
+     - ✅ Scris text în chunk-ul nou
+     - ✅ Dat onBlur (click în afară)
+     - ✅ Afișat "Salvat ✓"
+     - ✅ Generat 5 variante audio cu succes
+     - ✅ Dat refresh - chunk-ul NOU există și are audio
+   - **Impact:** ✅ Chunk-urile noi se salvează efectiv în DB și pot fi folosite pentru generare audio
+
+#### 📚 Documentație Creată
+
+1. **ANALIZA_COD.md**
+   - Analiză completă a codului sursei aplicației
+   - Arhitectură generală și stack tehnologic
+   - Schema bazei de date și relațiile dintre modele
+   - Analiză detaliată a componentelor frontend
+   - Descrierea fiecărui endpoint API
+
+2. **BUG_ANALIZA_SALVARE.md**
+   - Analiză detaliată a bug-ului de salvare
+   - Reproducere pas cu pas
+   - Identificare cauză root
+   - Soluție propusă și implementată
+
+---
 
 ### Sesiunea 30 Ianuarie 2026 - Bug Fixes Critice
 
