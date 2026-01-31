@@ -384,31 +384,8 @@ Altfel:
 
 ---
 
-## Pași Următori (Faza 7)
-
-### High Priority
-- [ ] Testare completă generare audio pe live cu API ElevenLabs
-- [ ] Verificare export MP3 final cu FFmpeg
-- [ ] Verificare export ZIP
-
-### Medium Priority
-- [ ] Fallback pentru models API (listă hardcoded dacă 401)
-- [ ] Error handling îmbunătățit pentru permisiuni lipsă
-- [ ] Caching pentru voices (reduce latență de la 2.6s)
-- [ ] Optimizare autosave debounce
-
-### Low Priority
-- [ ] Polish UI și UX (loading states, animations)
-- [ ] Optimizări performanță API routes
-- [ ] Keyboard shortcuts (Ctrl+G pentru generare)
-- [ ] Posibilitate pauze între chunk-uri la export
-- [ ] Afișare durată totală audiobook
-
----
-
 ## Documente Referință
 
-- `Document Final de Specificații pentru Manus v4.md` - Specificații complete (versiunea curentă)
 - `Workflow Deployment și Migrări.md` - Ghid deployment și backup
 - `TECHNICAL_PRD.md` - PRD tehnic complet cu arhitectură și fluxuri (NOU - 30 Ian 2026)
 - `TESTING_RESULTS.md` - Rezultate testare și recomandări (NOU - 30 Ian 2026)
